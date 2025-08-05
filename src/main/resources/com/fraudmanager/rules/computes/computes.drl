@@ -30,10 +30,38 @@ no-loop true
 lock-on-active true
 salience 1000
 when
-$measurment: Measurment($marchand: transaction.merchant, $record: records.get("COUNT_OF_TRANSACTION_ALL"))
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL"))
 then
-$record.setCount($record.getCount() + 1);
+$record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL", $record);;
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE AMOUNT OF ALL TRX"
+no-loop true
+lock-on-active true
+salience 1000
+when
+$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL"))
+then
+$record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
+$measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL", $record);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) depassement du montant maximal"
+no-loop true
+
+salience 200
+when
+$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL"), $record.amount>=10000.0)
+then
+Alert alert = new Alert("Alert : dépassement du montant max 10000.0 pendant 10 second(s)",Alert.POSITIVE);
+alert.setWeight(100);;
+alert.setRuleTitle("depassement du montant maximal");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
 update($measurment);
 end
 
