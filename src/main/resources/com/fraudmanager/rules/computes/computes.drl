@@ -30,7 +30,7 @@ no-loop true
 lock-on-active true
 salience 1000
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL"))
+$measurment: Measurment($marchand: transaction.merchant, $record: records.get("COUNT_OF_TRANSACTION_ALL"))
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL", $record);;
