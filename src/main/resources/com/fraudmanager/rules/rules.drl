@@ -1,0 +1,344 @@
+/*
+ * Copyright 2015 Red Hat, Inc. and/or its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+*/
+
+package com.fraudmanager.rules;
+
+import com.fraudmanager.flink.model.Measurment;
+import com.fraudmanager.flink.model.Transaction;
+import com.fraudmanager.flink.model.Alert;
+import com.fraudmanager.flink.utils.TimeConversion;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import com.fraudmanager.flink.model.Reference;
+import com.fraudmanager.flink.model.ExternalSystem;
+import java.util.List;
+import com.fraudmanager.flink.utils.Utils;
+import com.fraudmanager.flink.model.computation.Entry;
+import com.fraudmanager.flink.model.computation.EventObject;
+import com.fraudmanager.flink.model.computation.Qualifier;
+import com.fraudmanager.flink.model.computation.Subject;
+import com.fraudmanager.flink.model.computation.TransactionalEvent;
+import com.fraudmanager.flink.model.computation.ValueCategory;
+import com.fraudmanager.flink.model.computation.EventObject;
+import com.fraudmanager.flink.model.computation.TransactionalEvent;
+
+
+
+global TimeConversion timeConverter;
+global Reference reference;
+global ExternalSystem externalSystem;
+
+declare ExceptionOfMerchantChanges
+    measurment: Measurment
+end
+
+declare ExceptionAfterCountry
+    measurment: Measurment
+end
+
+declare ExceptionOfTransactionCount
+    measurment: Measurment
+end
+
+declare ExceptionCountryCount
+    measurment: Measurment
+end
+
+function Entry createNewCountEntry(String valueCategory, String eventObject, String transactionalEvent) {
+    Entry entry = new Entry(valueCategory, eventObject, transactionalEvent, null, 0L);
+    return entry;
+}
+
+function Entry createNewAmountEntry(String valueCategory, String eventObject, String transactionalEvent) {
+    Entry entry = new Entry(valueCategory, eventObject, transactionalEvent, null, 0D);
+    return entry;
+}
+
+rule "Set transaction quantity to 1 when it is the first transaction in a country in the current timeframe"
+    no-loop true
+    lock-on-active true
+    salience 100
+when
+    $measurment: Measurment($lastCountry: getLasts().get(EventObject.COUNTRY), $lastCountry == null, $entry: getRecords().get(ValueCategory.COUNT + Utils.SEPARATOR + EventObject.COUNTRY + Utils.SEPARATOR + TransactionalEvent.CHANGES))
+then
+    if ($entry == null) {
+        // Création d'une nouvelle entrée
+        Entry entry = createNewCountEntry(ValueCategory.COUNT, EventObject.COUNTRY, TransactionalEvent.CHANGES);
+
+        // Ajout dans les enregistrements
+        $measurment.getRecords().put(entry.key(), entry);
+
+        // Mise à jour du fait dans Drools
+
+    } else {
+        // Modification de l'entrée existante
+        $entry.setLongValue(0L);
+
+        // Mise à jour des enregistrements
+        $measurment.getRecords().put($entry.key(), $entry);
+
+    }
+    
+    // Mise à jour des dernières valeurs
+    $measurment.getLasts().put(EventObject.COUNTRY, $measurment.getTransaction().country);
+    update($measurment);
+end
+
+/////////////////////////////////////////////////////////////////
+// Rule to count the number of country changes during a timeframe
+/////////////////////////////////////////////////////////////////
+
+rule "Increase transaction country change frequency when a transaction is done in another country"
+no-loop true
+lock-on-active true
+salience 100
+when
+    $measurment: Measurment($lastCountry: getLasts().get(EventObject.COUNTRY), $lastCountry != null, $lastCountry != transaction.country, $entry: getRecords().get(ValueCategory.COUNT+Utils.SEPARATOR+EventObject.COUNTRY+Utils.SEPARATOR+TransactionalEvent.CHANGES))
+then
+    
+    if ($entry == null) {
+        // Création d'une nouvelle entrée
+        Entry entry = createNewCountEntry(ValueCategory.COUNT, EventObject.COUNTRY, TransactionalEvent.CHANGES);
+        $measurment.getRecords().put(entry.key(), entry);
+    }
+    else {
+        if ($entry.getLongValue() == null) {
+            $entry.setLongValue(0L); // Initialiser à 0 si $count est null
+        }
+
+        $entry.setLongValue($entry.getLongValue() + 1); // Incrémentation
+        $measurment.getRecords().put($entry.key(), $entry);
+    }
+    
+    $measurment.getLasts().put(EventObject.COUNTRY, $measurment.getTransaction().country);
+    update($measurment); 
+end
+
+/////////////////////////////////////////////////////////////////
+// Rules to count the number of merchant changes during a timeframe
+/////////////////////////////////////////////////////////////////
+/*rule "Increase the number of merchant changes each time the card is used with a new merchant"
+no-loop true
+lock-on-active true
+salience 100
+when
+    $measurment: Measurment($lastMerchant: getLasts().get(EventObject.MERCHANT), $lastMerchant != null, $lastMerchant != transaction.getMerchant(), $entry: getRecords().get(ValueCategory.COUNT+Utils.SEPARATOR+EventObject.MERCHANT+Utils.SEPARATOR+TransactionalEvent.CHANGES))
+then
+    if ($entry == null) {
+        // Création d'une nouvelle entrée
+        Entry entry = createNewEntry(ValueCategory.COUNT, EventObject.MERCHANT, TransactionalEvent.CHANGES, null, 0L);
+
+        // Ajout dans les enregistrements
+        $measurment.getRecords().put(entry.key(), entry);
+
+        // Mise à jour du fait dans Drools
+    }
+    else {
+        if ($entry.getValue() == null) {
+            $entry.setValue(0L); // Initialiser à 0 si $count est null
+        }
+
+        $entry.setValue($entry.getValue().longValue + 1);
+        $measurment.getRecords().put($entry.key(),$entry);
+        update($entry);
+    }
+    $measurment.getLasts().put(EventObject.COUNTRY, $lastMerchant);
+    update($measurment);
+end
+
+rule "Set the merchant change frequence to 1 when the card is used with a new merchant the first time in the current timeframe"
+no-loop true
+lock-on-active true
+salience 100
+when
+    $measurment: Measurment($lastMerchant: getLasts().get(EventObject.MERCHANT), $lastMerchant == null, $entry: getRecords().get(ValueCategory.COUNT + Utils.SEPARATOR + EventObject.MERCHANT + Utils.SEPARATOR + TransactionalEvent.CHANGES))
+then
+    if ($entry == null) {
+        // Création d'une nouvelle entrée
+        Entry entry = createNewEntry(ValueCategory.COUNT, EventObject.MERCHANT, TransactionalEvent.CHANGES, null, 0L);
+
+        // Ajout dans les enregistrements
+        $measurment.getRecords().put(entry.key(), entry);
+    }
+    else {
+        $entry.setValue(0L);
+        $measurment.getLasts().put(EventObject.MERCHANT, transaction.getMerchant());
+        $measurment.getRecords().put($entry.key(), $entry);
+        update($entry);
+    }
+    update($measurment);
+end
+
+/////////////////////////////////////////////////////////////////
+// Count the total number of transactions during a timeframe
+/////////////////////////////////////////////////////////////////
+rule "Count of transactions during a timeframe"
+no-loop true
+lock-on-active true
+salience 100
+when 
+    $measurment: Measurment($entry: getRecords().get(ValueCategory.COUNT + Utils.SEPARATOR + EventObject.TRANSACTION + Utils.SEPARATOR + TransactionalEvent.ALL)) @Watch(!alerts)
+then
+    if ($entry == null) {
+        Entry entry = createNewEntry(ValueCategory.COUNT, EventObject.TRANSACTION, TransactionalEvent.ALL, null, 1L);
+
+        // Ajout dans les enregistrements
+        $measurment.getRecords().put(entry.key(), entry);
+    }
+    else {
+        if ($entry.getValue() == null) {
+            $entry.setValue(0L);
+        }
+        $entry.setValue($entry.getValue().longValue + 1);
+        $measurment.getRecords().put($entry.key(), $entry);
+        update($entry);
+    }
+
+    $measurment.getLasts().put(EventObject.TRANSACTION, transaction);
+    update($measurment);
+    
+end
+
+
+rule "Count of the number of merchant changes during a timeframe"
+no-loop true
+lock-on-active true
+salience 80
+when 
+    $measurment: Measurment($entry: getRecords().get(ValueCategory.COUNT+Utils.SEPARATOR+EventObject.MERCHANT+Utils.SEPARATOR+TransactionalEvent.CHANGES), $entry != null, $entry.getValue() != null, $countOfMerchantChanges: $entry.getValue().longValue >= reference.getParams().get(Subject.CARD+"/CountMerchantChanges").getThreshold().longValue, windowSize == reference.getParams().get(Subject.CARD+"/CountMerchantChanges").getWindowSize()) @Watch(!alerts)
+then
+    Alert alert = new Alert("Count of merchant changes -> " + $countOfMerchantChanges + " exceeded the threshold " + reference.getParams().get(Subject.CARD+"/CountMerchantChanges").getThreshold().longValue + " for cardID -> " + $measurment.getKey() + " in a " + timeConverter.translateTimestampToDuration($measurment.getWindowSize()) + " timeframe");
+    alert.setSeverity(Alert.POSITIVE);
+    $measurment.getAlerts().add(alert);
+    update($measurment);
+end
+*/
+
+rule "Count of the number of country changes during a timeframe"
+no-loop true
+lock-on-active true
+salience 80
+when 
+    $measurment: Measurment($entry: getRecords().get(ValueCategory.COUNT+Utils.SEPARATOR+EventObject.COUNTRY+Utils.SEPARATOR+TransactionalEvent.CHANGES), $entry != null, $entry.getLongValue() != null, $entry.getLongValue() >= reference.getParams().get(Subject.CARD+"/CountCountryChanges").getCountThreshold(), windowSize == reference.getParams().get(Subject.CARD+"/CountCountryChanges").getWindowSize()) @Watch(!alerts)
+then
+    Alert alert = new Alert("Count of country changes -> " + $entry.getLongValue() + " exceeded the threshold " + reference.getParams().get(Subject.CARD+"/CountCountryChanges").getCountThreshold() + " for cardID -> " + $measurment.getKey() + " in a " + timeConverter.translateTimestampToDuration($measurment.getWindowSize()) + " timeframe");
+    alert.setSeverity(Alert.POSITIVE);
+    $measurment.getAlerts().add(alert);
+    update($measurment);
+end
+
+/*
+rule "Count of the number of transactions during a timeframe"
+no-loop true
+lock-on-active true
+salience 50
+when 
+    $measurment: Measurment($entry: getRecords().get(ValueCategory.COUNT+Utils.SEPARATOR+EventObject.TRANSACTION+Utils.SEPARATOR+TransactionalEvent.ALL), $entry != null, $entry.getValue() != null, $countTransactions: $entry.getValue().longValue >= reference.getParams().get(Subject.CARD+"/CountTransactions").getThreshold().longValue, windowSize == reference.getParams().get(Subject.CARD+"/CountTransactions").getWindowSize()) @Watch(!alerts)
+then
+    Alert alert = new Alert("Count of transactions -> " + $countTransactions + " exceeded the threshold " + reference.getParams().get(Subject.CARD+"/CountTransactions").getThreshold().longValue + " for cardID -> " + $measurment.getKey() + " in a " + timeConverter.translateTimestampToDuration($measurment.getWindowSize()) + " timeframe");
+    alert.setSeverity(Alert.POSITIVE);
+    $measurment.getAlerts().add(alert);
+    update($measurment);
+end
+
+
+rule "Declare exception of merchant changes if transaction is a CHIP transaction"
+no-loop true
+salience 90
+when
+    $measurment: Measurment(transaction.chip == true, $entry: getRecords().get(ValueCategory.COUNT+Utils.SEPARATOR+EventObject.MERCHANT+Utils.SEPARATOR+TransactionalEvent.CHANGES), $entry.getValue() != null, $entry.getValue().longValue > 0)    
+    not ExceptionOfMerchantChanges()
+then
+    insert(new ExceptionOfMerchantChanges($measurment));
+end
+
+rule "Declare exception of merchant changes if transaction is done in unrisky country"
+no-loop true
+salience 90
+when
+    $measurment: Measurment(!externalSystem.getInformation("countryRisky", transaction.getCountry()), $entry: getRecords().get(ValueCategory.COUNT+Utils.SEPARATOR+EventObject.MERCHANT+Utils.SEPARATOR+TransactionalEvent.CHANGES), $entry != null, $entry.getValue() != null, $entry.getValue().longValue > 0)
+    not ExceptionOfMerchantChanges()
+then
+    insert(new ExceptionOfMerchantChanges($measurment));
+end
+
+rule "Decrement the count of merchant changes if exception detected"
+no-loop true
+salience 50
+when
+    ExceptionOfMerchantChanges($measurment: measurment, $entry: getRecords().get(ValueCategory.COUNT+Utils.SEPARATOR+EventObject.MERCHANT+Utils.SEPARATOR+TransactionalEvent.CHANGES))
+then
+    if ($entry.getValue() == null) {
+        $entry.setValue(0L)
+    }
+    $entry.setValue($entry.getValue().longValue - 1)
+
+    $measurment.getRecords().put($entry.key(), $entry);
+    update($measurment);
+end
+
+
+rule "Declare exception of transaction count if transaction is an CHIP transaction"
+no-loop true
+salience 90
+when
+    $measurment: Measurment(transaction.chip == true, $entry: getRecords().get(ValueCategory.COUNT+Utils.SEPARATOR+EventObject.TRANSACTION+Utils.SEPARATOR+TransactionalEvent.ALL), $entry != null, $entry.getValue() != null, $entry.getValue().longValue > 0)
+    not ExceptionOfTransactionCount()
+then
+    insert(new ExceptionOfTransactionCount($measurment));
+end
+
+rule "Decrement the count of transactions if exception detected"
+no-loop true
+salience 50
+when
+    ExceptionOfTransactionCount($measurment: measurment, $entry: getRecords().get(ValueCategory.COUNT+Utils.SEPARATOR+EventObject.TRANSACTION+Utils.SEPARATOR+TransactionalEvent.ALL), $entry != null)
+then
+    if ($entry.getValue() == null) {
+        $entry.setValue(0L);
+    }
+
+    if ($entry.getValue().longValue > 0) {
+        $entry.setValue($entry.getValue().longValue - 1);
+    }
+    
+    $measurment.getRecords().put($entry.key(), $entry);
+    update($measurment);
+end
+
+rule "Declare exception of country changes count if transaction is from a VIP"
+no-loop true
+salience 90
+when
+    $measurment: Measurment(transaction.category == "VIP", $entry: getRecords().get(ValueCategory.COUNT+Utils.SEPARATOR+EventObject.COUNTRY+Utils.SEPARATOR+TransactionalEvent.CHANGES), $entry != null, $entry.getValue() != null, $entry.getValue().longValue > 0)
+    not ExceptionCountryCount()
+then
+    insert(new ExceptionCountryCount($measurment));
+end
+
+rule "Decrement the count of country changes if exception detected"
+no-loop true
+salience 50
+when
+    ExceptionCountryCount($measurment: measurment, $entry: getRecords().get(ValueCategory.COUNT+Utils.SEPARATOR+EventObject.COUNTRY+Utils.SEPARATOR+TransactionalEvent.CHANGES), $entry != null)
+then
+    if ($entry.getValue() == null) {
+        $entry.setValue(0L);
+    }
+    if ($entry.getValue().longValue > 0) {
+        $entry.setValue($entry.getValue().longValue - 1);
+    }
+    $measurment.getRecords().put($entry.key(), $entry);
+    update($measurment);
+end */

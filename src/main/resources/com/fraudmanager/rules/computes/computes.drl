@@ -1,0 +1,40 @@
+package com.fraudmanager.rules.computes;
+
+import com.fraudmanager.flink.model.Measurment;
+import ma.s2m.auth.ITransaction;
+import com.fraudmanager.flink.utils.TimeConversion;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import com.fraudmanager.flink.model.Reference;
+import com.fraudmanager.flink.model.ExternalSystem;
+import java.util.List;
+import java.util.Arrays;
+import java.time.Duration;
+import java.time.LocalDate;
+import com.fraudmanager.flink.utils.Utils;
+import com.fraudmanager.flink.model.computation.MeasurmentRecord;
+import com.fraudmanager.flink.model.computation.RecordHashMap;
+import com.fraudmanager.flink.model.computation.Qualifier;
+import com.fraudmanager.flink.model.computation.Subject;
+import ma.s2m.auth.Alert;
+import ma.medtech.droolbuilder.messaging.IMessageSender;
+import ma.medtech.droolbuilder.services.TypeConverter;
+
+global TimeConversion timeConverter;
+global Reference reference;
+global ExternalSystem externalSystem;
+global IMessageSender messageSender;
+global TypeConverter typeConverter;
+
+rule "(Rule Type COMPUTE) COMPUTE"
+no-loop true
+lock-on-active true
+salience 1000
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL"))
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL", $record);;
+update($measurment);
+end
+
+
