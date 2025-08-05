@@ -25,15 +25,16 @@ global ExternalSystem externalSystem;
 global IMessageSender messageSender;
 global TypeConverter typeConverter;
 
-rule "(Rule Type COMPUTE) COMPUTE"
+rule "(Rule Type COMPUTE) sss"
 no-loop true
 lock-on-active true
 salience 1000
 when
 $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL"))
 then
-$record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL", $record);;
+$record.setCount($record.getCount()+2L);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL", $record);
+;
 update($measurment);
 end
 
