@@ -22,262 +22,141 @@ global ExternalSystem externalSystem;
 global IMessageSender messageSender;
 global TypeConverter typeConverter;
 
-rule "(Rule Type ALERT) Vélocité carte - plus de 50 transactions en 1 heure"
+rule "(Rule Type ALERT)  identify Card testing attacks (multiple small transactions in small time)"
 no-loop true
 
 salience 200
-agenda-group "Card->1 hour"
+agenda-group "Card->2 minutes"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_BY_CARD_PER_HOUR"), $record.count>50L)
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_CARD_TESTING"), $record.count>3L)
 then
-messageSender.send("Alerte: Plus de 50L transactions détectées sur une même carte en 1 hour(s)",Alert.POSITIVE);
+messageSender.send("Alerte : Plus de 3L transactions détectées en moins de 2 minute(s)",Alert.POSITIVE);
 $measurment.setDirty(true);
 
 update($measurment);
 end
 
-rule "(Rule Type ALERT) Transaction unique - montant dépasse le seuil maximal"
+rule "(Rule Type ALERT) rapid change of merchant"
 no-loop true
 
 salience 200
-agenda-group "Card->10 seconds"
+agenda-group "Merchant->2 minutes"
 when
-$measurment: Measurment(transaction.amount>3000.0)
+$measurment: Measurment($record: records.get("COUNT_OF_MCC_ALL_MERCHANT_CHANGE_IN_TIMEFRAME"))
 then
-messageSender.send("Règle déclenchée : montant dépasse le seuil maximal",Alert.POSITIVE);
-$measurment.setDirty(true);
+$record.getCount()>=2L$measurment.setDirty(true);
 
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) Vélocité carte - plus de 50 transactions en 1 heure"
+rule "(Rule Type COMPUTE)  identify Card testing attacks (multiple small transactions in small time)"
 no-loop true
 lock-on-active true
 salience 1000
-agenda-group "Card->1 hour"
+agenda-group "Card->2 minutes"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_BY_CARD_PER_HOUR"))
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_CARD_TESTING"))
 then
 $record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_BY_CARD_PER_HOUR", $record);;
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_CARD_TESTING", $record);;
 $measurment.setDirty(true);
 
 update($measurment);
 end
 
-rule "(Rule Type ALERT) Changement rapide de commerçant"
+rule "(Rule Type ALERT) Pays différents détectés en 1h"
 no-loop true
 
 salience 200
-agenda-group "Card->3 minutes"
+agenda-group "Card->1 hour"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_MCC_ALL_MERCHANT_BY_CARD_IN_TIMEFRAME"))
+$measurment: Measurment($record: records.get("COUNT_OF_COUNTRY_ALL_CHANGE_COUNTRIES_IN_TIMEFRAME"), $record.count>=2L)
 then
-messageSender.send("Alerte : Plus de 2 marchands différents détectés en 3 minute(s)",Alert.POSITIVE);
+messageSender.send("Alerte : Plus de 2L pays différents détectés en moins de 1 hour(s)",Alert.POSITIVE);
 $measurment.setDirty(true);
 
 update($measurment);
 end
 
-rule "(Rule Type ALERT) Vélocité carte - plus de 5 transactions en 1 minute"
-no-loop true
-
-salience 200
-agenda-group "Card->1 minute"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_BY_CARD_PER_MINUTE"), $record.count>5L)
-then
-messageSender.send("Alerte: Plus de 5L transactions détectées sur une même carte en 1 minute(s)",Alert.POSITIVE);
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) Changement rapide de commerçant"
+rule "(Rule Type COMPUTE) Pays différents détectés en 1h"
 no-loop true
 lock-on-active true
 salience 1000
-agenda-group "Card->3 minutes"
+agenda-group "Card->1 hour"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_MCC_ALL_MERCHANT_BY_CARD_IN_TIMEFRAME"))
+$measurment: Measurment($lastCountry: lasts.get("COUNTRY"), $record: records.get("COUNT_OF_COUNTRY_ALL_CHANGE_COUNTRIES_IN_TIMEFRAME"), $lastCountry!=transaction.country)
 then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_COUNTRY_ALL_CHANGE_COUNTRIES_IN_TIMEFRAME", $record);;
+$measurment.getLasts().put("COUNTRY",$measurment.getTransaction().getCountry());
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) Initialize rule -> Pays différents détectés en 1h"
+no-loop true
+lock-on-active true
+salience 1000
+when
+    $measurment: Measurment()
+        Measurment($lastCountry: lasts.get("COUNTRY"), $lastCountry==null)
+then
+$measurment.getLasts().put("COUNTRY",$measurment.getTransaction().getCountry());
+$measurment.setDirty(true);
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) rapid change of merchant"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Merchant->3 minutes"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_MCC_ALL_MERCHANT_CHANGE_IN_TIMEFRAME"))
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_MCC_ALL_MERCHANT_CHANGE_IN_TIMEFRAME", $record);;
 $record.getArgList().add($measurment.getTransaction().getMerchant());
 $measurment.setDirty(true);
 
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) Vélocité carte - plus de 5 transactions en 1 minute"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->1 minute"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_BY_CARD_PER_MINUTE"))
-then
-$record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_BY_CARD_PER_MINUTE", $record);;
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) Montants anormaux – Montant > 3× moyenne historique porteur"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->1 month"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_HISTORICAL_AVERAGE_BY_CARD"))
-then
-$record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_HISTORICAL_AVERAGE_BY_CARD", $record);;
-$record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_HISTORICAL_AVERAGE_BY_CARD", $record);;
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) RULSET_SAMPLE"
-no-loop true
-lock-on-active true
-salience 100
-agenda-group "Card->10 seconds"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL"))
-then
-$record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL", $record);;
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type ALERT) Détection du dépassement"
-no-loop true
-
-salience 200
-agenda-group "Card->1 month"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_HISTORICAL_AVERAGE_BY_CARD"))
-then
-messageSender.send("Alerte : Montant dépasse 3× la moyenne historique du porteur",Alert.POSITIVE);
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type ALERT)  Different countries detected in short time \\"1Hour\\"."
-no-loop true
-
-salience 200
-agenda-group "main"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_COUNTRY_ALL_BY_CARD_IN_TIMEFRAME"))
-then
-messageSender.send("Alert : Plus de 2 pays différents détectés en moins de 1 hour(s)",Alert.POSITIVE);
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type ALERT) Vélocité carte - plus de 200 transactions en 24h"
-no-loop true
-
-salience 200
-agenda-group "Card->1 day"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_BY_CARD_PER_TWEENYFOUR_HOUR"), $record.count>200L)
-then
-messageSender.send("Alerte: Plus de 200L transactions détectées sur une même carte en 1 day(s)",Alert.POSITIVE);
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) Vélocité carte - plus de 200 transactions en 24h"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->1 day"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_BY_CARD_PER_TWEENYFOUR_HOUR"))
-then
-$record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_BY_CARD_PER_TWEENYFOUR_HOUR", $record);;
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type ALERT) Transactions structurées - Montant > seuil"
-no-loop true
-
-salience 200
-agenda-group "Card->15 minutes"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_NUMBER_STRUCTURED_TRANSACTIONS"), $record.count>=5L)
-then
-messageSender.send("Alerte: Transactions supérieures à 5L détectées en fractionnement",Alert.POSITIVE);
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) Transactions structurées - Montant > seuil"
+rule "(Rule Type COMPUTE) Alert when high activity is detected at one merchant"
 no-loop true
 lock-on-active true
 salience 1000
 agenda-group "Card->15 minutes"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_NUMBER_STRUCTURED_TRANSACTIONS"), transaction.amount>1L)
+$measurment: Measurment($merchant: transaction.merchant)
+    
+    eval($merchant != null)
+    $key0: String() from "COUNT".concat("_OF").concat("_TRANSACTION").concat("_ALL").concat("_BY").concat("_MERCHANT").concat("_IN").concat("_TIMEFRAME").concat("_").concat($merchant.toString())
+    $record: MeasurmentRecord() from $measurment.getRecords().get($key0)
+    Measurment(BYMERCHANTINTIMEFRAME)
 then
 $record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_NUMBER_STRUCTURED_TRANSACTIONS", $record);;
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_BY_MERCHANT_IN_TIMEFRAME_" + $merchant, $record);;
 $measurment.setDirty(true);
 
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) Même jour, même carte, 5 transactions de 2000 MAD (montant identique répété)"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->1 day"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_ABOVE_THRESHOLD"), transaction.amount>=2000.0)
-then
-$record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_ABOVE_THRESHOLD", $record);;
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type ALERT) Même jour, même carte, 5 transactions de 2000 MAD (montant identique répété)"
+rule "(Rule Type ALERT) Alert when high activity is detected at one merchant"
 no-loop true
 
 salience 200
-agenda-group "Card->1 day"
+agenda-group "Card->15 minutes"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_ABOVE_THRESHOLD"), $record.count>=5L)
+$measurment: Measurment($merchant: transaction.merchant)
+    
+    eval($merchant != null)
+    $key0: String() from "COUNT".concat("_OF").concat("_TRANSACTION").concat("_ALL").concat("_BY").concat("_MERCHANT").concat("_IN").concat("_TIMEFRAME").concat("_").concat($merchant.toString())
+    $record: MeasurmentRecord() from $measurment.getRecords().get($key0)
+    Measurment(BYMERCHANTINTIMEFRAME$record.count>=2L)
 then
-messageSender.send("Alerte: recus plus de 5L transactions en moins de 1 day(s)",Alert.POSITIVE);
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE)  Different countries detected in short time \\\\"1Hour\\\\"."
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->1 hour"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_COUNTRY_ALL_BY_CARD_IN_TIMEFRAME"))
-then
-$measurment.getRecords().put("COUNT_OF_COUNTRY_ALL_BY_CARD_IN_TIMEFRAME",$record);
+messageSender.send("Alerte : Plus de 2L transactions détectées sur un même marchand \" + $merchant + \" en moins de 15 minute(s)",Alert.POSITIVE);
 $measurment.setDirty(true);
 
 update($measurment);
