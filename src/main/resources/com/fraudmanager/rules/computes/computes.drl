@@ -22,6 +22,20 @@ global ExternalSystem externalSystem;
 global IMessageSender messageSender;
 global TypeConverter typeConverter;
 
+rule "(Rule Type ALERT)  Incorrect PIN exeeced a thershold"
+no-loop true
+
+salience 200
+agenda-group "Card->10 minutes"
+when
+$measurment: Measurment()
+then
+messageSender.send("Alerte : Nombre de transactions refusées (PIN incorrect) dépasse 2L en moins de 10 minute(s)",Alert.POSITIVE);
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
 rule "(Rule Type ALERT)  identify Card testing attacks (multiple small transactions in small time)"
 no-loop true
 
@@ -49,6 +63,14 @@ $record.getCount()>=2L$measurment.setDirty(true);
 update($measurment);
 end
 
+rule "(Rule Type COMPUTE)  Incorrect PIN exeeced a thershold"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->10 minutes"
+when
+$measurment: Measurment()
+then
 rule "(Rule Type COMPUTE)  identify Card testing attacks (multiple small transactions in small time)"
 no-loop true
 lock-on-active true
