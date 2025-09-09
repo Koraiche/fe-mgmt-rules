@@ -38,8 +38,6 @@ $measurment: Measurment($amount: transaction.amount, $merchant: transaction.merc
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_" + $merchant+ "_" + $amount, $record);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -57,8 +55,6 @@ alert.setRuleTitle("ALERT IF 2L TRANSACTIONS IN DIFFERENT COUNTRIES WITHIN 5 hou
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -76,8 +72,6 @@ alert.setRuleTitle("ALERT IF TOTAL NUMBER OF POS 02 TRANSACTIONS RECEIVED IN 10 
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -91,8 +85,6 @@ $measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_SPECIFIC
 then
 $record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
 $measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL_SPECIFICMCC", $record);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -106,8 +98,6 @@ $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_WITH_SPEC
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_WITH_SPECIFIC_RESPONSE_CODE", $record);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -125,8 +115,6 @@ alert.setRuleTitle("ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 20000.0 IN 1 hour
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -140,8 +128,6 @@ $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_POS02"), 
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_POS02", $record);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -159,8 +145,6 @@ alert.setRuleTitle("ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 10000.0 LIMIT IN 
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -178,14 +162,12 @@ $measurment: Measurment($amount: transaction.amount, $merchant: transaction.merc
     $record: MeasurmentRecord() from $measurment.getRecords().get($key0)
     Measurment($record.count>=3L)
 then
-Alert alert = new Alert("Alert: More than 3L transactions done with the same amount \" + $amount + \" and the same merchant \" + $merchant + \" within 1 minute(s)",Alert.POSITIVE);
+Alert alert = new Alert("Alert: More than 3L transactions done with the same amount " + $amount + " and the same merchant " + $merchant + " within 1 minute(s)",Alert.POSITIVE);
 alert.setWeight(200);;
 alert.setRuleTitle("ALERT IF NUMBER OF TRANSACTIONS WITH THE SAME AMOUNT WITH THE SAME MERCHANT EXCEED 3L within 1 minute(s)");;
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -202,14 +184,12 @@ $measurment: Measurment($merchant: transaction.merchant)
     $record: MeasurmentRecord() from $measurment.getRecords().get($key0)
     Measurment($record.count>=10L)
 then
-Alert alert = new Alert("Alert: Count of transactions with merchant \" + $merchant + \" exceeded 10L within 1 hour(s)",Alert.POSITIVE);
+Alert alert = new Alert("Alert: Count of transactions with merchant " + $merchant + " exceeded 10L within 1 hour(s)",Alert.POSITIVE);
 alert.setWeight(100);;
 alert.setRuleTitle("ALERT IF NUMBER OF TRX WITH THE SAME MERCHANT EXCEEDED 10L WITHIN 1 hour(s)");;
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -223,8 +203,6 @@ $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_INVALIDPI
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_INVALIDPIN_ATTEMPTS", $record);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -242,8 +220,6 @@ alert.setRuleTitle("ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 5000.0 IN 10 minu
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -261,8 +237,6 @@ alert.setRuleTitle("ALERT IF THE NUMBER OF TRANSACTIONS WITH A SPECIFIC RESPONSE
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -276,8 +250,6 @@ $measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_SPECIFIC
 then
 $record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
 $measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL_SPECIFIC_COUNTRIES", $record);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -291,8 +263,6 @@ $measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL"))
 then
 $record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
 $measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL", $record);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -310,8 +280,6 @@ alert.setRuleTitle("ALERT IF TOTAL NUMBER OF INVALID PIN ATTEMPTS EXCEEDS 5L IN 
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -323,14 +291,8 @@ agenda-group "Card->14 days"
 when
 $measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_TOTAL_PERCENTAGE"))
 then
-$record.setTotal($record.getTotal()+$measurment.getTransaction().getAmount());
-$measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL_TOTAL_PERCENTAGE", $record);
-;
-$record.setPercentage($record.getTotal()/15000);
-$measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL_TOTAL_PERCENTAGE", $record);
-;
-$measurment.setDirty(true);
-
+$record.putValue("total", (Double)$record.getValue("total")+$measurment.getTransaction().getAmount());
+$record.putValue("percentage", (Double)$record.getValue("total")/15000);
 update($measurment);
 end
 
@@ -345,8 +307,6 @@ then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_COUNTRY_CHANGES", $record);;
 $measurment.getLasts().put("COUNTRY",$measurment.getTransaction().getCountry());
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -378,8 +338,6 @@ $measurment: Measurment($merchant: transaction.merchant)
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_" + $merchant, $record);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
@@ -389,7 +347,7 @@ no-loop true
 salience 200
 agenda-group "Card->14 days"
 when
-$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_TOTAL_PERCENTAGE"), $record.percentage>=0.6)
+$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_TOTAL_PERCENTAGE"), (Double)$record.getValue("percentage")>=0.6)
 then
 Alert alert = new Alert("Alert: Consumption of available to spend exceeded 0.6 within 14 day(s)",Alert.POSITIVE);
 alert.setWeight(100);;
@@ -397,8 +355,6 @@ alert.setRuleTitle("ALERT IF THE PERCENTAGE UTILIZATION OF AVAILABLE 'TO SPEND' 
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
-$measurment.setDirty(true);
-
 update($measurment);
 end
 
