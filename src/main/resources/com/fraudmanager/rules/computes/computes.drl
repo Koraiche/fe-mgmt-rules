@@ -22,163 +22,381 @@ global ExternalSystem externalSystem;
 global IMessageSender messageSender;
 global TypeConverter typeConverter;
 
-rule "(Rule Type ALERT)  Incorrect PIN exeeced a thershold"
-no-loop true
-
-salience 200
-agenda-group "Card->10 minutes"
-when
-$measurment: Measurment()
-then
-messageSender.send("Alerte : Nombre de transactions refusées (PIN incorrect) dépasse 2L en moins de 10 minute(s)",Alert.POSITIVE);
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type ALERT)  identify Card testing attacks (multiple small transactions in small time)"
-no-loop true
-
-salience 200
-agenda-group "Card->2 minutes"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_CARD_TESTING"), $record.count>3L)
-then
-messageSender.send("Alerte : Plus de 3L transactions détectées en moins de 2 minute(s)",Alert.POSITIVE);
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type ALERT) rapid change of merchant"
-no-loop true
-
-salience 200
-agenda-group "Merchant->2 minutes"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_MCC_ALL_MERCHANT_CHANGE_IN_TIMEFRAME"))
-then
-$record.getCount()>=2L$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE)  Incorrect PIN exeeced a thershold"
+rule "(Rule Type COMPUTE) COMPUTE NUMBER OF TRANSACTIONS WITH THE SAME AMOUNT WITH THE SAME MERCHANT"
 no-loop true
 lock-on-active true
 salience 1000
-agenda-group "Card->10 minutes"
+agenda-group "Card->1 minute"
 when
-$measurment: Measurment()
-then
-rule "(Rule Type COMPUTE)  identify Card testing attacks (multiple small transactions in small time)"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->2 minutes"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_CARD_TESTING"))
+$measurment: Measurment($amount: transaction.amount, $merchant: transaction.merchant)
+    
+    eval($amount != null)
+    eval($merchant != null)
+    $key0: String() from "COUNT".concat("_OF").concat("_TRANSACTION").concat("_ALL").concat("_").concat($merchant.toString()).concat("_").concat($amount.toString())
+    $record: MeasurmentRecord() from $measurment.getRecords().get($key0)
+    Measurment()
 then
 $record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_CARD_TESTING", $record);;
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_" + $merchant+ "_" + $amount, $record);;
 $measurment.setDirty(true);
 
 update($measurment);
 end
 
-rule "(Rule Type ALERT) Pays différents détectés en 1h"
+rule "(Rule Type ALERT) ALERT IF 2L TRANSACTIONS IN DIFFERENT COUNTRIES WITHIN 5 hour(s)"
+no-loop true
+
+salience 200
+agenda-group "Card->5 hours"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_COUNTRY_CHANGES"), $record.count>=2L)
+then
+Alert alert = new Alert("Alert: Count of country changes within 5 hour(s) exceeded 2L",Alert.POSITIVE);
+alert.setWeight(100);;
+alert.setRuleTitle("ALERT IF 2L TRANSACTIONS IN DIFFERENT COUNTRIES WITHIN 5 hour(s)");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT IF TOTAL NUMBER OF POS 02 TRANSACTIONS RECEIVED IN 10 second(s) TIME EXCEEDS 6L"
+no-loop true
+
+salience 200
+agenda-group "Card->10 seconds"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_POS02"), $record.count>=6L)
+then
+Alert alert = new Alert("Alert: Count of POS02 transactions exceeded 6L in 10 second(s) period",Alert.POSITIVE);
+alert.setWeight(100);;
+alert.setRuleTitle("ALERT IF TOTAL NUMBER OF POS 02 TRANSACTIONS RECEIVED IN 10 second(s) TIME EXCEEDS 6L");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE TOTAL AUTHORIZATION VALUE IN 10 minute(s) PERIOD IN [\"0451\", \"0458\", \"0543\"] MCC'S"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->10 minutes"
+when
+$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_SPECIFICMCC"), $mcc: transaction.mcc, Arrays.asList("0451","0458","0543").contains($mcc))
+then
+$record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
+$measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL_SPECIFICMCC", $record);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE NUMBER OF TRANSACTIONS WITH A RESPONSE CODES [\"33\", \"51\", \"54\", \"55\", \"61\", \"65\", \"82\"] WITHIN 10 minute(s)"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->10 minutes"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_WITH_SPECIFIC_RESPONSE_CODE"), $respCode: transaction.autRespCodeF039, Arrays.asList("33","51","54","55","61","65","82").contains($respCode), transaction.autMercTypeF018=="6011" || (transaction.autMercTypeF018!="6011" && (transaction.autCardHldrPrscF22_08=="9" || transaction.autCatLevelF22_12=="6")) || (transaction.autMercTypeF018!="6011" && (transaction.autCardHldrPrscF22_08!="9" && transaction.autCatLevelF22_12!="6")))
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_WITH_SPECIFIC_RESPONSE_CODE", $record);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 20000.0 IN 1 hour(s) IN SPECIFIC COUNTRIES"
 no-loop true
 
 salience 200
 agenda-group "Card->1 hour"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_COUNTRY_ALL_CHANGE_COUNTRIES_IN_TIMEFRAME"), $record.count>=2L)
+$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_SPECIFIC_COUNTRIES"), $record.amount>=20000.0)
 then
-messageSender.send("Alerte : Plus de 2L pays différents détectés en moins de 1 hour(s)",Alert.POSITIVE);
+Alert alert = new Alert("Alert: total auth value exceeded 20000.0 within 1 hour(s) in specific countries",Alert.POSITIVE);
+alert.setWeight(300);;
+alert.setRuleTitle("ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 20000.0 IN 1 hour(s) IN SPECIFIC COUNTRIES");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
 $measurment.setDirty(true);
 
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) Pays différents détectés en 1h"
+rule "(Rule Type COMPUTE) COMPUTE TOTAL NUMBER OF POS 02 TRANSACTIONS RECEIVED IN A 10 second(s) TIME"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->10 seconds"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_POS02"), $inpMode: transaction.autCardDataInptModeF22_09, Arrays.asList("2","9").contains($inpMode), transaction.autRespCodeF039=="000")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_POS02", $record);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 10000.0 LIMIT IN 10 minute(s) period"
+no-loop true
+
+salience 200
+agenda-group "Card->10 minutes"
+when
+$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL"), $record.amount>=10000.0)
+then
+Alert alert = new Alert("Alert: Amount of total auth value exceeded 10000.0 in 10 minute(s)",Alert.POSITIVE);
+alert.setWeight(200);;
+alert.setRuleTitle("ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 10000.0 LIMIT IN 10 minute(s) period");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT IF NUMBER OF TRANSACTIONS WITH THE SAME AMOUNT WITH THE SAME MERCHANT EXCEED 3L within 1 minute(s)"
+no-loop true
+
+salience 200
+agenda-group "Card->1 minute"
+when
+$measurment: Measurment($amount: transaction.amount, $merchant: transaction.merchant)
+    
+    eval($amount != null)
+    eval($merchant != null)
+    $key0: String() from "COUNT".concat("_OF").concat("_TRANSACTION").concat("_ALL").concat("_").concat($merchant.toString()).concat("_").concat($amount.toString())
+    $record: MeasurmentRecord() from $measurment.getRecords().get($key0)
+    Measurment($record.count>=3L)
+then
+Alert alert = new Alert("Alert: More than 3L transactions done with the same amount \" + $amount + \" and the same merchant \" + $merchant + \" within 1 minute(s)",Alert.POSITIVE);
+alert.setWeight(200);;
+alert.setRuleTitle("ALERT IF NUMBER OF TRANSACTIONS WITH THE SAME AMOUNT WITH THE SAME MERCHANT EXCEED 3L within 1 minute(s)");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT IF NUMBER OF TRX WITH THE SAME MERCHANT EXCEEDED 10L WITHIN 1 hour(s)"
+no-loop true
+
+salience 200
+agenda-group "Card->1 hour"
+when
+$measurment: Measurment($merchant: transaction.merchant)
+    
+    eval($merchant != null)
+    $key0: String() from "COUNT".concat("_OF").concat("_TRANSACTION").concat("_ALL").concat("_").concat($merchant.toString())
+    $record: MeasurmentRecord() from $measurment.getRecords().get($key0)
+    Measurment($record.count>=10L)
+then
+Alert alert = new Alert("Alert: Count of transactions with merchant \" + $merchant + \" exceeded 10L within 1 hour(s)",Alert.POSITIVE);
+alert.setWeight(100);;
+alert.setRuleTitle("ALERT IF NUMBER OF TRX WITH THE SAME MERCHANT EXCEEDED 10L WITHIN 1 hour(s)");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE TOTAL NUMBER OF INVALID PIN ATTEMPTS EXCEEDS 5L IN 1 minute(s) PERIOD"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->1 minute"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_INVALIDPIN_ATTEMPTS"), $respCode: transaction.autRespCodeF039, Arrays.asList("155","275").contains($respCode))
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_INVALIDPIN_ATTEMPTS", $record);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 5000.0 IN 10 minute(s) PERIOD IN SPECIFIC MCC'S"
+no-loop true
+
+salience 200
+agenda-group "Card->10 minutes"
+when
+$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_SPECIFICMCC"), $record.amount>=5000.0)
+then
+Alert alert = new Alert("Alert: Total value of auth exceeded 5000.0 in 10 minute(s) in specific MCCs",Alert.POSITIVE);
+alert.setWeight(200);;
+alert.setRuleTitle("ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 5000.0 IN 10 minute(s) PERIOD IN SPECIFIC MCC'S");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT IF THE NUMBER OF TRANSACTIONS WITH A SPECIFIC RESPONSE CODE EXCEED 5L WITHIN 10 minute(s)"
+no-loop true
+
+salience 200
+agenda-group "Card->10 minutes"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_WITH_SPECIFIC_RESPONSE_CODE"), $record.count>=5L)
+then
+Alert alert = new Alert("Alert: Number of transactions with specific response code exceeded 5L within 10 minute(s)",Alert.POSITIVE);
+alert.setWeight(300);;
+alert.setRuleTitle("ALERT IF THE NUMBER OF TRANSACTIONS WITH A SPECIFIC RESPONSE CODE EXCEED 5L WITHIN 10 minute(s)");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE TOTAL AUTHORIZATION VALUE IN 1 hour(s) IN SPECIFIC COUNTRIES"
 no-loop true
 lock-on-active true
 salience 1000
 agenda-group "Card->1 hour"
 when
-$measurment: Measurment($lastCountry: lasts.get("COUNTRY"), $record: records.get("COUNT_OF_COUNTRY_ALL_CHANGE_COUNTRIES_IN_TIMEFRAME"), $lastCountry!=transaction.country)
+$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_SPECIFIC_COUNTRIES"), $country: transaction.country, $country!=null, Arrays.asList("GAB","BOT","KEN").contains($country))
+then
+$record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
+$measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL_SPECIFIC_COUNTRIES", $record);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE TOTAL AUTHORIZATION VALUE IN 10 minute(s) period"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->10 minutes"
+when
+$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL"))
+then
+$record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
+$measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL", $record);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT IF TOTAL NUMBER OF INVALID PIN ATTEMPTS EXCEEDS 5L IN 1 minute(s) PERIOD"
+no-loop true
+
+salience 200
+agenda-group "Card->1 minute"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_INVALIDPIN_ATTEMPTS"), $record.count>=5L)
+then
+Alert alert = new Alert("Number of invalid PIN attempts exceeded 5L in 1 minute(s)",Alert.POSITIVE);
+alert.setWeight(100);;
+alert.setRuleTitle("ALERT IF TOTAL NUMBER OF INVALID PIN ATTEMPTS EXCEEDS 5L IN 1 minute(s) PERIOD");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE THE PERCENTAGE UTILIZATION OF AVAILABLE 'TO SPEND' IN 14 day(s) PERIOD"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->14 days"
+when
+$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_TOTAL_PERCENTAGE"))
+then
+$record.setTotal($record.getTotal()+$measurment.getTransaction().getAmount());
+$measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL_TOTAL_PERCENTAGE", $record);
+;
+$record.setPercentage($record.getTotal()/15000);
+$measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL_TOTAL_PERCENTAGE", $record);
+;
+$measurment.setDirty(true);
+
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE NUMBER OF TRX IN DIFFERENT COUNTRIES WITHIN 5 hour(s)"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->5 hours"
+when
+$measurment: Measurment($country: lasts.get("COUNTRY"), $country!=null, $country!=transaction.country, $record: records.get("COUNT_OF_COUNTRY_CHANGES"))
 then
 $record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_COUNTRY_ALL_CHANGE_COUNTRIES_IN_TIMEFRAME", $record);;
+$measurment.getRecords().put("COUNT_OF_COUNTRY_CHANGES", $record);;
 $measurment.getLasts().put("COUNTRY",$measurment.getTransaction().getCountry());
 $measurment.setDirty(true);
 
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) Initialize rule -> Pays différents détectés en 1h"
+rule "(Rule Type COMPUTE) Initialize rule -> COMPUTE NUMBER OF TRX IN DIFFERENT COUNTRIES WITHIN 5 hour(s)"
 no-loop true
 lock-on-active true
 salience 1000
 when
     $measurment: Measurment()
-        Measurment($lastCountry: lasts.get("COUNTRY"), $lastCountry==null)
+        Measurment($country: lasts.get("COUNTRY"), $country==null)
 then
 $measurment.getLasts().put("COUNTRY",$measurment.getTransaction().getCountry());
 $measurment.setDirty(true);
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) rapid change of merchant"
+rule "(Rule Type COMPUTE) COMPUTE NUMBER OF TRANSACTIONS WITH THE SAME MERCHANT WITHIN 1 hour(s)"
 no-loop true
 lock-on-active true
 salience 1000
-agenda-group "Merchant->3 minutes"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_MCC_ALL_MERCHANT_CHANGE_IN_TIMEFRAME"))
-then
-$record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_MCC_ALL_MERCHANT_CHANGE_IN_TIMEFRAME", $record);;
-$record.getArgList().add($measurment.getTransaction().getMerchant());
-$measurment.setDirty(true);
-
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) Alert when high activity is detected at one merchant"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->15 minutes"
+agenda-group "Card->1 hour"
 when
 $measurment: Measurment($merchant: transaction.merchant)
     
     eval($merchant != null)
-    $key0: String() from "COUNT".concat("_OF").concat("_TRANSACTION").concat("_ALL").concat("_BY").concat("_MERCHANT").concat("_IN").concat("_TIMEFRAME").concat("_").concat($merchant.toString())
+    $key0: String() from "COUNT".concat("_OF").concat("_TRANSACTION").concat("_ALL").concat("_").concat($merchant.toString())
     $record: MeasurmentRecord() from $measurment.getRecords().get($key0)
-    Measurment(BYMERCHANTINTIMEFRAME)
+    Measurment()
 then
 $record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_BY_MERCHANT_IN_TIMEFRAME_" + $merchant, $record);;
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_" + $merchant, $record);;
 $measurment.setDirty(true);
 
 update($measurment);
 end
 
-rule "(Rule Type ALERT) Alert when high activity is detected at one merchant"
+rule "(Rule Type ALERT) ALERT IF THE PERCENTAGE UTILIZATION OF AVAILABLE 'TO SPEND' IN 14 day(s) PERIOD EXCEEDS 60%"
 no-loop true
 
 salience 200
-agenda-group "Card->15 minutes"
+agenda-group "Card->14 days"
 when
-$measurment: Measurment($merchant: transaction.merchant)
-    
-    eval($merchant != null)
-    $key0: String() from "COUNT".concat("_OF").concat("_TRANSACTION").concat("_ALL").concat("_BY").concat("_MERCHANT").concat("_IN").concat("_TIMEFRAME").concat("_").concat($merchant.toString())
-    $record: MeasurmentRecord() from $measurment.getRecords().get($key0)
-    Measurment(BYMERCHANTINTIMEFRAME$record.count>=2L)
+$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_TOTAL_PERCENTAGE"), $record.percentage>=0.6)
 then
-messageSender.send("Alerte : Plus de 2L transactions détectées sur un même marchand \" + $merchant + \" en moins de 15 minute(s)",Alert.POSITIVE);
+Alert alert = new Alert("Alert: Consumption of available to spend exceeded 0.6 within 14 day(s)",Alert.POSITIVE);
+alert.setWeight(100);;
+alert.setRuleTitle("ALERT IF THE PERCENTAGE UTILIZATION OF AVAILABLE 'TO SPEND' IN 14 day(s) PERIOD EXCEEDS 60%");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
 $measurment.setDirty(true);
 
 update($measurment);
