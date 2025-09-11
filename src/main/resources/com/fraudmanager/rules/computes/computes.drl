@@ -240,6 +240,19 @@ $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R014", $record);;
 update($measurment);
 end
 
+rule "(Rule Type COMPUTE) COMPUTE More than 10 Cash Disbursement ATM transactions  detected in multiple countries within 5HOURS"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->5 hours"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R017"), $merchant: transaction.merchant, $country: transaction.autAcqrInstCounCodeF019, transaction.merchant==$merchant, transaction.autTranCode=="7000", ($country=="466" || $country=="400" || $country=="999"))
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R017", $record);;
+update($measurment);
+end
+
 rule "(Rule Type COMPUTE) COMPUTE NUMBER OF TRX IN DIFFERENT COUNTRIES WITHIN 5 hour(s)"
 no-loop true
 lock-on-active true
@@ -299,6 +312,18 @@ alert.setRuleTitle("ALERT IF THE PERCENTAGE UTILIZATION OF AVAILABLE 'TO SPEND' 
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT More than 10 Cash Disbursement ATM transactions  detected in multiple countries within 5HOURS"
+no-loop true
+
+salience 200
+agenda-group "Card->5 hours"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R017"), $merchant: transaction.merchant, $record.count>=3L)
+then
+messageSender.send("Alert: More than 3L Cash Disbursement ATM transactions at " + $merchant + ", TranCode=7000, detected in multiple countries (UAE=466, Jordan=400, Iraq=999) within 5 hour(s)",Alert.POSITIVE);
 update($measurment);
 end
 
@@ -453,18 +478,6 @@ messageSender.send("Alert: More than 40L transactions with Response Code 155 (PI
 update($measurment);
 end
 
-rule "(Rule Type ALERT) ALERT More than 70 transactions with Response Code 155 (PIN Error)  of type 5000 (Sales Draft) at MCC 3519 (Pullman International Hotels) in Kazakhstan (398) using Puce within 24 hours."
-no-loop true
-
-salience 200
-agenda-group "Card->1 day"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R013"), $merchant: transaction.merchant, $record.count>=70L)
-then
-messageSender.send("Alert: More than 70L transactions with Response Code 155 (PIN Error) at " + $merchant + ", TranCode=5000, MCC=3519 (Pullman Hotels), Country=Kazakhstan (398), Support=Puce within 1 day(s)",Alert.POSITIVE);
-update($measurment);
-end
-
 rule "(Rule Type ALERT) ALERT IF TOTAL NUMBER OF INVALID PIN ATTEMPTS EXCEEDS 5L IN 1 minute(s) PERIOD"
 no-loop true
 
@@ -479,6 +492,18 @@ alert.setRuleTitle("ALERT IF TOTAL NUMBER OF INVALID PIN ATTEMPTS EXCEEDS 5L IN 
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT More than 70 transactions with Response Code 155 (PIN Error)  of type 5000 (Sales Draft) at MCC 3519 (Pullman International Hotels) in Kazakhstan (398) using Puce within 24 hours."
+no-loop true
+
+salience 200
+agenda-group "Card->1 day"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R013"), $merchant: transaction.merchant, $record.count>=70L)
+then
+messageSender.send("Alert: More than 70L transactions with Response Code 155 (PIN Error) at " + $merchant + ", TranCode=5000, MCC=3519 (Pullman Hotels), Country=Kazakhstan (398), Support=Puce within 1 day(s)",Alert.POSITIVE);
 update($measurment);
 end
 
