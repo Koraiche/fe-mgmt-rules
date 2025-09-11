@@ -35,6 +35,19 @@ $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R006", $record);;
 update($measurment);
 end
 
+rule "(Rule Type COMPUTE) compute : repeated transactions at the same merchant"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Merchant->10 seconds"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R001"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7001", transaction.autMercTypeF018=="7011", transaction.autPaymChan=="5", transaction.autCardEntrCapaF22_01=="3", transaction.autRespCodeF039=="000")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R001", $record);;
+update($measurment);
+end
+
 rule "(Rule Type COMPUTE) Compute number of transactions within 1 minute(s)"
 no-loop true
 lock-on-active true
@@ -96,6 +109,18 @@ $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R000"), $
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R000", $record);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) R009 ALERT More than 10 transactions > 15,000 MAD at the same merchant within 1 week."
+no-loop true
+
+salience 200
+agenda-group "Merchant->7 days"
+when
+$measurment: Measurment($merchant: transaction.merchant, $record: records.get("COUNT_OF_TRANSACTION_ALL_R009"), $record.count>=10L)
+then
+messageSender.send("Alert: More than 10L transactions greater than 15,000 MAD at the same merchant " + $merchant + " within 7 day(s)",Alert.POSITIVE);
 update($measurment);
 end
 
@@ -315,7 +340,7 @@ messageSender.send("Alert: More than 25L transactions of type 5000 (Sales Draft)
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) COMPUTE More than 25 transactions of type 41000 (Smart Cash Deposit)  at MCC 3543 (Four Seasons) using Puce within 1 day."
+rule "(Rule Type COMPUTE) COMPUTE More than 25 transactions of type 41000 (Smart Cash Deposit)  at MCC 3543 (Four Seasons) using Puce within 1 day"
 no-loop true
 lock-on-active true
 salience 1000
