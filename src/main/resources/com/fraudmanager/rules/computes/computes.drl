@@ -35,6 +35,31 @@ $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R001", $record);;
 update($measurment);
 end
 
+rule "(Rule Type ALERT) ALERT IF MORE THAN 15 CASH DISBURSEMENT ATM TRANSACTIONS (7000) AT MCC 6011 USING PISTE WITH SAME MERCHANT WITHIN 15 MINUTES"
+no-loop true
+
+salience 200
+agenda-group "Merchant->15 minutes"
+when
+$measurment: Measurment($merchant: transaction.merchant, $record: records.get("COUNT_OF_TRANSACTION_ALL_R002"), $record.count>=15L)
+then
+messageSender.send("Alert: More than 15L transactions of type 7000 (Cash Disbursement ATM) at MCC 6011 (Financial Institution ATM) using Piste done with the same merchant within 15 minute(s)",Alert.POSITIVE);
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE TOTAL NUMBER OF 7000 CASH DISBURSEMENT ATM TRANSACTIONS AT MCC 6011 USING PISTE PER MERCHANT IN 15 minute(s)"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->15 minutes"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R002"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7000", transaction.autMercTypeF018=="6011", transaction.autCardEntrCapaF22_01=="2", transaction.autRespCodeF039=="000")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R002", $record);;
+update($measurment);
+end
+
 rule "(Rule Type ALERT) alert: repeated transactions at the same merchant"
 no-loop true
 
