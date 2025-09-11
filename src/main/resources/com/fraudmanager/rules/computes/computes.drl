@@ -240,7 +240,7 @@ $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R014", $record);;
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) COMPUTE More than 10 Cash Disbursement ATM transactions  detected in multiple countries within 5HOURS"
+rule "(Rule Type COMPUTE) COMPUTE More than 10 Cash Disbursement ATM transactions  detected in multiple countries within 5 HOURS"
 no-loop true
 lock-on-active true
 salience 1000
