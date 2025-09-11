@@ -62,6 +62,18 @@ $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL", $record);
 update($measurment);
 end
 
+rule "(Rule Type ALERT) ALERT More than 5 transactions with Response Code 155 (PIN Error) of type 7001 (Cash Advance POS) at MCC 7011 (Hilton Garden Inn) in Morocco (504) with MAD currency via Payment Channel POS using Piste within 10 seconds."
+no-loop true
+
+salience 200
+agenda-group "Card->10 seconds"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R010"), $merchant: transaction.merchant, $record.count>=5L)
+then
+messageSender.send("Alert: More than 5L transactions with Response Code 155 (PIN Error) at " + $merchant + ", TranCode=7001, MCC=7011 (Hilton Garden Inn), Country=Morocco (504), Currency=MAD, Support=Piste within 10 second(s)",Alert.POSITIVE);
+update($measurment);
+end
+
 rule "(Rule Type ALERT) ALERT More than 70 transactions of type 7000 (Cash Disbursement ATM)  at MCC 3604 (Hilton Garden Inn) in Iraq (999) with Boliviano (068) using Contactless within 1 minute."
 no-loop true
 
