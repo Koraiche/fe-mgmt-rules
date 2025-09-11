@@ -77,6 +77,36 @@ $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R005", $record);;
 update($measurment);
 end
 
+rule "(Rule Type ALERT) ALERTMore than 20 transactions of type 5000 (Sales Draft) at MCC 3641 (Sofitel Hotels) in Morocco (504) with Moroccan Dirham (504) using Puce within 1 hour"
+no-loop true
+
+salience 200
+agenda-group "Merchant->1 hour"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R004"), $merchant: transaction.merchant, $record.count>=20L)
+then
+Alert alert = new Alert("Alert: More than 20L transactions detected at merchant " + $merchant + ",TranCode=5000, MCC=3641 (Sofitel), Country=Morocco (504), Currency=MAD (504), Support=Puce within 1 hour(s)",Alert.POSITIVE);
+alert.setWeight(100);;
+alert.setRuleTitle("ALERTMore than 20 transactions of type 5000 (Sales Draft) at MCC 3641 (Sofitel Hotels) in Morocco (504) with Moroccan Dirham (504) using Puce within 1 hour");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) R009 COMPUTE More than 10 transactions > 15,000 MAD at the same merchant within 1 week."
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Merchant->7 days"
+when
+$measurment: Measurment($merchant: transaction.merchant, $amount: transaction.amount, $record: records.get("COUNT_OF_TRANSACTION_ALL_R009"), transaction.merchant==$merchant, transaction.autTranCurrF049=="504", transaction.amount>15000L, transaction.autRespCodeF039=="000")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R009", $record);;
+update($measurment);
+end
+
 rule "(Rule Type ALERT) R008 ALERTMore than 50 transactions of type 7007 (Salary Withdrawal POS)  at MCC 3260 (Spirit Air) in United Arab Emirates (466) with Afghani Lek (004) using Puce within 3 months."
 no-loop true
 
