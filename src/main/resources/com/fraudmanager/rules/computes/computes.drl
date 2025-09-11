@@ -114,6 +114,31 @@ $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R005", $record);;
 update($measurment);
 end
 
+rule "(Rule Type ALERT) ALERT More than 8 transactions with Response Code 275 (PIN Try Limit Exceeded) of type 7000 (Cash Disbursement ATM) at MCC 6011 (ATM) in Jordan (400) via Payment Channel ATM using Puce within 15 minutes."
+no-loop true
+
+salience 200
+agenda-group "Card->15 minutes"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R011"), $merchant: transaction.merchant, $record.count>=8L)
+then
+messageSender.send("Alert: More than 8L transactions with Response Code 275 (PIN Try Limit Exceeded) at " + $merchant + ", TranCode=7000, MCC=6011 (ATM), Country=Jordan (400), Support=Puce within 15 minute(s)",Alert.POSITIVE);
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE More than 8 transactions with Response Code 275 (PIN Try Limit Exceeded) of type 7000 (Cash Disbursement ATM) at MCC 6011 (ATM) in Jordan (400) via Payment Channel ATM using Puce within 15 minutes."
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->15 minutes"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R011"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7000", transaction.autMercTypeF018=="6011", transaction.autAcqrInstCounCodeF019=="400", transaction.autCardEntrCapaF22_01=="1", transaction.autRespCodeF039=="275")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R011", $record);;
+update($measurment);
+end
+
 rule "(Rule Type ALERT) ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 20000.0 IN 1 hour(s) IN SPECIFIC COUNTRIES"
 no-loop true
 
