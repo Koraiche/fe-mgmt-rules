@@ -150,6 +150,19 @@ $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R008", $record);;
 update($measurment);
 end
 
+rule "(Rule Type COMPUTE) COMPUTE More than 5 transactions with Response Code 155 (PIN Error) of type 7001 (Cash Advance POS) at MCC 7011 (Hilton Garden Inn) in Morocco (504) with MAD currency via Payment Channel POS using Piste within 10 seconds."
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->10 seconds"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R010"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7001", transaction.autMercTypeF018=="7011", transaction.autAcqrInstCounCodeF019=="504", transaction.autTranCurrF049=="504", transaction.autCardEntrCapaF22_01=="2", transaction.autRespCodeF039=="155")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R010", $record);;
+update($measurment);
+end
+
 rule "(Rule Type ALERT) ALERTMore than 20 transactions of type 5000 (Sales Draft) at MCC 3641 (Sofitel Hotels) in Morocco (504) with Moroccan Dirham (504) using Puce within 1 hour"
 no-loop true
 
