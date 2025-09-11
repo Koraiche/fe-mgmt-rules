@@ -22,82 +22,67 @@ global ExternalSystem externalSystem;
 global IMessageSender messageSender;
 global TypeConverter typeConverter;
 
-rule "(Rule Type COMPUTE) COMPUTE NUMBER OF TRANSACTIONS WITH THE SAME AMOUNT WITH THE SAME MERCHANT"
+rule "(Rule Type COMPUTE) COMPUTE More than 70 transactions of type 7000 (Cash Disbursement ATM)  at MCC 3604 (Hilton Garden Inn) in Iraq (999) with Boliviano (068) using Contactless within 1 minute."
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Merchant->1 minute"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R006"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7000", transaction.autMercTypeF018=="3604", transaction.autAcqrInstCounCodeF019=="999", transaction.autTranCurrF049=="068", transaction.autCardEntrCapaF22_01=="3", transaction.autRespCodeF039=="000")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R006", $record);;
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) compute : repeated transactions at the same merchant"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Merchant->10 seconds"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R001"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7001", transaction.autMercTypeF018=="7011", transaction.autPaymChan=="5", transaction.autCardEntrCapaF22_01=="3", transaction.autRespCodeF039=="000")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R001", $record);;
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) Compute number of transactions within 1 minute(s)"
 no-loop true
 lock-on-active true
 salience 1000
 agenda-group "Card->1 minute"
 when
-$measurment: Measurment($amount: transaction.amount, $merchant: transaction.merchant)
-    
-    eval($amount != null)
-    eval($merchant != null)
-    $key0: String() from "COUNT".concat("_OF").concat("_TRANSACTION").concat("_ALL").concat("_").concat($merchant.toString()).concat("_").concat($amount.toString())
-    $record: MeasurmentRecord() from $measurment.getRecords().get($key0)
-    Measurment()
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL"))
 then
-$record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_" + $merchant+ "_" + $amount, $record);;
+$record.getCount() = $record.getCount()+1L;
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL", $record);
+;
 update($measurment);
 end
 
-rule "(Rule Type ALERT) ALERT IF 2L TRANSACTIONS IN DIFFERENT COUNTRIES WITHIN 5 hour(s)"
-no-loop true
-
-salience 200
-agenda-group "Card->5 hours"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_COUNTRY_CHANGES"), $record.count>=2L)
-then
-Alert alert = new Alert("Alert: Count of country changes within 5 hour(s) exceeded 2L",Alert.POSITIVE);
-alert.setWeight(100);;
-alert.setRuleTitle("ALERT IF 2L TRANSACTIONS IN DIFFERENT COUNTRIES WITHIN 5 hour(s)");;
-alert.setTotalAmount($record.getAmount());
-alert.setTotalCount($record.getCount());
-$measurment.getAlertSet().addAlert(alert);;
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) COMPUTE TOTAL AUTHORIZATION VALUE IN 10 minute(s) PERIOD IN [\"0451\", \"0458\", \"0543\"] MCC'S"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->10 minutes"
-when
-$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_SPECIFICMCC"), $mcc: transaction.mcc, Arrays.asList("0451","0458","0543").contains($mcc))
-then
-$record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
-$measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL_SPECIFICMCC", $record);;
-update($measurment);
-end
-
-rule "(Rule Type ALERT) ALERT IF TOTAL NUMBER OF POS 02 TRANSACTIONS RECEIVED IN 10 second(s) TIME EXCEEDS 6L"
+rule "(Rule Type ALERT) ALERT More than 5 transactions with Response Code 155 (PIN Error) of type 7001 (Cash Advance POS) at MCC 7011 (Hilton Garden Inn) in Morocco (504) with MAD currency via Payment Channel POS using Piste within 10 seconds."
 no-loop true
 
 salience 200
 agenda-group "Card->10 seconds"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_POS02"), $record.count>=6L)
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R010"), $merchant: transaction.merchant, $record.count>=5L)
 then
-Alert alert = new Alert("Alert: Count of POS02 transactions exceeded 6L in 10 second(s) period",Alert.POSITIVE);
-alert.setWeight(100);;
-alert.setRuleTitle("ALERT IF TOTAL NUMBER OF POS 02 TRANSACTIONS RECEIVED IN 10 second(s) TIME EXCEEDS 6L");;
-alert.setTotalAmount($record.getAmount());
-alert.setTotalCount($record.getCount());
-$measurment.getAlertSet().addAlert(alert);;
+messageSender.send("Alert: More than 5L transactions with Response Code 155 (PIN Error) at " + $merchant + ", TranCode=7001, MCC=7011 (Hilton Garden Inn), Country=Morocco (504), Currency=MAD, Support=Piste within 10 second(s)",Alert.POSITIVE);
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) COMPUTE NUMBER OF TRANSACTIONS WITH A RESPONSE CODES [\"33\", \"51\", \"54\", \"55\", \"61\", \"65\", \"82\"] WITHIN 10 minute(s)"
+rule "(Rule Type ALERT) ALERT More than 70 transactions of type 7000 (Cash Disbursement ATM)  at MCC 3604 (Hilton Garden Inn) in Iraq (999) with Boliviano (068) using Contactless within 1 minute."
 no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->10 minutes"
+
+salience 200
+agenda-group "Merchant->1 minute"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_WITH_SPECIFIC_RESPONSE_CODE"), $respCode: transaction.autRespCodeF039, Arrays.asList("33","51","54","55","61","65","82").contains($respCode), transaction.autMercTypeF018=="6011" || (transaction.autMercTypeF018!="6011" && (transaction.autCardHldrPrscF22_08=="9" || transaction.autCatLevelF22_12=="6")) || (transaction.autMercTypeF018!="6011" && (transaction.autCardHldrPrscF22_08!="9" && transaction.autCatLevelF22_12!="6")))
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R006"), $merchant: transaction.merchant, $record.count>=70L)
 then
-$record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_WITH_SPECIFIC_RESPONSE_CODE", $record);;
+messageSender.send("Alert: More than 70L transactions detected at " + $merchant + ", TranCode=7000, MCC=3604 (Hilton Garden Inn), Country=Iraq (999), Currency=Boliviano (068), Support=Contactless within 1 minute(s)",Alert.POSITIVE);
 update($measurment);
 end
 
@@ -114,250 +99,66 @@ $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R005", $record);;
 update($measurment);
 end
 
-rule "(Rule Type ALERT) ALERT More than 8 transactions with Response Code 275 (PIN Try Limit Exceeded) of type 7000 (Cash Disbursement ATM) at MCC 6011 (ATM) in Jordan (400) via Payment Channel ATM using Puce within 15 minutes."
+rule "(Rule Type ALERT) ALERT More than 30 transactions of type 7006 (Cash Out) at MCC  7993 (Video Amusement Game) in Jordan (400) with Iraqi Dinar (368) using Piste within 1 week."
 no-loop true
 
 salience 200
-agenda-group "Card->15 minutes"
+agenda-group "Merchant->7 days"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R011"), $merchant: transaction.merchant, $record.count>=8L)
+$measurment: Measurment($merchant: transaction.merchant, $record: records.get("COUNT_OF_TRANSACTION_ALL_R004"), $record.count>=30L)
 then
-messageSender.send("Alert: More than 8L transactions with Response Code 275 (PIN Try Limit Exceeded) at " + $merchant + ", TranCode=7000, MCC=6011 (ATM), Country=Jordan (400), Support=Puce within 15 minute(s)",Alert.POSITIVE);
+messageSender.send("Alert: More than 30L transactions of type 41000 (Smart Cash Deposit) at MCC=3543 (Four Seasons) using Puce at the same merchant " + $merchant + " within 7 day(s)",Alert.POSITIVE);
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) COMPUTE More than 8 transactions with Response Code 275 (PIN Try Limit Exceeded) of type 7000 (Cash Disbursement ATM) at MCC 6011 (ATM) in Jordan (400) via Payment Channel ATM using Puce within 15 minutes."
+rule "(Rule Type COMPUTE) R000: COMPUTE More than 20 transactions of type 5000 (Sales Draft) at MCC 3641 (Sofitel Hotels) in Morocco (504) with Moroccan Dirham (504) using Puce within 1 hour"
 no-loop true
 lock-on-active true
 salience 1000
-agenda-group "Card->15 minutes"
+agenda-group "Merchant->1 hour"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R011"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7000", transaction.autMercTypeF018=="6011", transaction.autAcqrInstCounCodeF019=="400", transaction.autCardEntrCapaF22_01=="1", transaction.autRespCodeF039=="275")
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R000"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="5000", transaction.autMercTypeF018=="3641", transaction.autAcqrInstCounCodeF019=="504", transaction.autTranCurrF049=="504", transaction.autCardEntrCapaF22_01=="1", transaction.autRespCodeF039=="000")
 then
 $record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R011", $record);;
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R000", $record);;
 update($measurment);
 end
 
-rule "(Rule Type ALERT) ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 20000.0 IN 1 hour(s) IN SPECIFIC COUNTRIES"
+rule "(Rule Type ALERT) R009 ALERT More than 10 transactions > 15,000 MAD at the same merchant within 1 week."
 no-loop true
 
 salience 200
-agenda-group "Card->1 hour"
+agenda-group "Merchant->7 days"
 when
-$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_SPECIFIC_COUNTRIES"), $record.amount>=20000.0)
+$measurment: Measurment($merchant: transaction.merchant, $record: records.get("COUNT_OF_TRANSACTION_ALL_R009"), $record.count>=10L)
 then
-Alert alert = new Alert("Alert: total auth value exceeded 20000.0 within 1 hour(s) in specific countries",Alert.POSITIVE);
-alert.setWeight(300);;
-alert.setRuleTitle("ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 20000.0 IN 1 hour(s) IN SPECIFIC COUNTRIES");;
-alert.setTotalAmount($record.getAmount());
-alert.setTotalCount($record.getCount());
-$measurment.getAlertSet().addAlert(alert);;
+messageSender.send("Alert: More than 10L transactions greater than 15,000 MAD at the same merchant " + $merchant + " within 7 day(s)",Alert.POSITIVE);
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) COMPUTE TOTAL NUMBER OF POS 02 TRANSACTIONS RECEIVED IN A 10 second(s) TIME"
+rule "(Rule Type COMPUTE) compute : repeated transactions at the same merchant"
 no-loop true
 lock-on-active true
 salience 1000
-agenda-group "Card->10 seconds"
+agenda-group "Merchant->10 seconds"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_POS02"), $inpMode: transaction.autCardDataInptModeF22_09, Arrays.asList("2","9").contains($inpMode), transaction.autRespCodeF039=="000")
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R001"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7001", transaction.autMercTypeF018=="7011", transaction.autPaymChan=="5", transaction.autCardEntrCapaF22_01=="3", transaction.autRespCodeF039=="000")
 then
 $record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_POS02", $record);;
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R001", $record);;
 update($measurment);
 end
 
-rule "(Rule Type ALERT) ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 10000.0 LIMIT IN 10 minute(s) period"
-no-loop true
-
-salience 200
-agenda-group "Card->10 minutes"
-when
-$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL"), $record.amount>=10000.0)
-then
-Alert alert = new Alert("Alert: Amount of total auth value exceeded 10000.0 in 10 minute(s)",Alert.POSITIVE);
-alert.setWeight(200);;
-alert.setRuleTitle("ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 10000.0 LIMIT IN 10 minute(s) period");;
-alert.setTotalAmount($record.getAmount());
-alert.setTotalCount($record.getCount());
-$measurment.getAlertSet().addAlert(alert);;
-update($measurment);
-end
-
-rule "(Rule Type ALERT) ALERT IF NUMBER OF TRANSACTIONS WITH THE SAME AMOUNT WITH THE SAME MERCHANT EXCEED 3L within 1 minute(s)"
-no-loop true
-
-salience 200
-agenda-group "Card->1 minute"
-when
-$measurment: Measurment($amount: transaction.amount, $merchant: transaction.merchant)
-    
-    eval($amount != null)
-    eval($merchant != null)
-    $key0: String() from "COUNT".concat("_OF").concat("_TRANSACTION").concat("_ALL").concat("_").concat($merchant.toString()).concat("_").concat($amount.toString())
-    $record: MeasurmentRecord() from $measurment.getRecords().get($key0)
-    Measurment($record.count>=3L)
-then
-Alert alert = new Alert("Alert: More than 3L transactions done with the same amount " + $amount + " and the same merchant " + $merchant + " within 1 minute(s)",Alert.POSITIVE);
-alert.setWeight(200);;
-alert.setRuleTitle("ALERT IF NUMBER OF TRANSACTIONS WITH THE SAME AMOUNT WITH THE SAME MERCHANT EXCEED 3L within 1 minute(s)");;
-alert.setTotalAmount($record.getAmount());
-alert.setTotalCount($record.getCount());
-$measurment.getAlertSet().addAlert(alert);;
-update($measurment);
-end
-
-rule "(Rule Type ALERT) ALERT IF NUMBER OF TRX WITH THE SAME MERCHANT EXCEEDED 10L WITHIN 1 hour(s)"
-no-loop true
-
-salience 200
-agenda-group "Card->1 hour"
-when
-$measurment: Measurment($merchant: transaction.merchant)
-    
-    eval($merchant != null)
-    $key0: String() from "COUNT".concat("_OF").concat("_TRANSACTION").concat("_ALL").concat("_").concat($merchant.toString())
-    $record: MeasurmentRecord() from $measurment.getRecords().get($key0)
-    Measurment($record.count>=10L)
-then
-Alert alert = new Alert("Alert: Count of transactions with merchant " + $merchant + " exceeded 10L within 1 hour(s)",Alert.POSITIVE);
-alert.setWeight(100);;
-alert.setRuleTitle("ALERT IF NUMBER OF TRX WITH THE SAME MERCHANT EXCEEDED 10L WITHIN 1 hour(s)");;
-alert.setTotalAmount($record.getAmount());
-alert.setTotalCount($record.getCount());
-$measurment.getAlertSet().addAlert(alert);;
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) COMPUTE TOTAL NUMBER OF INVALID PIN ATTEMPTS EXCEEDS 5L IN 1 minute(s) PERIOD"
+rule "(Rule Type COMPUTE) R008 COMPUTE More than 50 transactions of type 7007 (Salary Withdrawal POS)  at MCC 3260 (Spirit Air) in United Arab Emirates (466) with Afghani Lek (004) using Puce within 3 months."
 no-loop true
 lock-on-active true
 salience 1000
-agenda-group "Card->1 minute"
+agenda-group "Merchant->3 months"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_INVALIDPIN_ATTEMPTS"), $respCode: transaction.autRespCodeF039, Arrays.asList("155","275").contains($respCode))
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R008"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7007", transaction.autMercTypeF018=="3260", transaction.autAcqrInstCounCodeF019=="466", transaction.autTranCurrF049=="004", transaction.autCardEntrCapaF22_01=="1", transaction.autRespCodeF039=="000")
 then
 $record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_INVALIDPIN_ATTEMPTS", $record);;
-update($measurment);
-end
-
-rule "(Rule Type ALERT) ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 5000.0 IN 10 minute(s) PERIOD IN SPECIFIC MCC'S"
-no-loop true
-
-salience 200
-agenda-group "Card->10 minutes"
-when
-$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_SPECIFICMCC"), $record.amount>=5000.0)
-then
-Alert alert = new Alert("Alert: Total value of auth exceeded 5000.0 in 10 minute(s) in specific MCCs",Alert.POSITIVE);
-alert.setWeight(200);;
-alert.setRuleTitle("ALERT IF TOTAL AUTHORIZATION VALUE EXCEEDS 5000.0 IN 10 minute(s) PERIOD IN SPECIFIC MCC'S");;
-alert.setTotalAmount($record.getAmount());
-alert.setTotalCount($record.getCount());
-$measurment.getAlertSet().addAlert(alert);;
-update($measurment);
-end
-
-rule "(Rule Type ALERT) ALERT IF THE NUMBER OF TRANSACTIONS WITH A SPECIFIC RESPONSE CODE EXCEED 5L WITHIN 10 minute(s)"
-no-loop true
-
-salience 200
-agenda-group "Card->10 minutes"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_WITH_SPECIFIC_RESPONSE_CODE"), $record.count>=5L)
-then
-Alert alert = new Alert("Alert: Number of transactions with specific response code exceeded 5L within 10 minute(s)",Alert.POSITIVE);
-alert.setWeight(300);;
-alert.setRuleTitle("ALERT IF THE NUMBER OF TRANSACTIONS WITH A SPECIFIC RESPONSE CODE EXCEED 5L WITHIN 10 minute(s)");;
-alert.setTotalAmount($record.getAmount());
-alert.setTotalCount($record.getCount());
-$measurment.getAlertSet().addAlert(alert);;
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) COMPUTE TOTAL AUTHORIZATION VALUE IN 1 hour(s) IN SPECIFIC COUNTRIES"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->1 hour"
-when
-$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_SPECIFIC_COUNTRIES"), $country: transaction.country, $country!=null, Arrays.asList("GAB","BOT","KEN").contains($country))
-then
-$record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
-$measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL_SPECIFIC_COUNTRIES", $record);;
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) COMPUTE TOTAL AUTHORIZATION VALUE IN 10 minute(s) period"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->10 minutes"
-when
-$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL"))
-then
-$record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
-$measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL", $record);;
-update($measurment);
-end
-
-rule "(Rule Type ALERT) ALERT IF TOTAL NUMBER OF INVALID PIN ATTEMPTS EXCEEDS 5L IN 1 minute(s) PERIOD"
-no-loop true
-
-salience 200
-agenda-group "Card->1 minute"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_INVALIDPIN_ATTEMPTS"), $record.count>=5L)
-then
-Alert alert = new Alert("Number of invalid PIN attempts exceeded 5L in 1 minute(s)",Alert.POSITIVE);
-alert.setWeight(100);;
-alert.setRuleTitle("ALERT IF TOTAL NUMBER OF INVALID PIN ATTEMPTS EXCEEDS 5L IN 1 minute(s) PERIOD");;
-alert.setTotalAmount($record.getAmount());
-alert.setTotalCount($record.getCount());
-$measurment.getAlertSet().addAlert(alert);;
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) COMPUTE THE PERCENTAGE UTILIZATION OF AVAILABLE 'TO SPEND' IN 14 day(s) PERIOD"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->14 days"
-when
-$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_TOTAL_PERCENTAGE"))
-then
-$record.putValue("total", (Double)$record.getValue("total")+$measurment.getTransaction().getAmount());
-$record.putValue("percentage", (Double)$record.getValue("total")/15000);
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) COMPUTE NUMBER OF TRX IN DIFFERENT COUNTRIES WITHIN 5 hour(s)"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->5 hours"
-when
-$measurment: Measurment($country: lasts.get("COUNTRY"), $country!=null, $country!=transaction.country, $record: records.get("COUNT_OF_COUNTRY_CHANGES"))
-then
-$record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_COUNTRY_CHANGES", $record);;
-$measurment.getLasts().put("COUNTRY",$measurment.getTransaction().getCountry());
-update($measurment);
-end
-
-rule "(Rule Type COMPUTE) Initialize rule -> COMPUTE NUMBER OF TRX IN DIFFERENT COUNTRIES WITHIN 5 hour(s)"
-no-loop true
-lock-on-active true
-salience 1000
-when
-    $measurment: Measurment()
-        Measurment($country: lasts.get("COUNTRY"), $country==null)
-then
-$measurment.getLasts().put("COUNTRY",$measurment.getTransaction().getCountry());
-$measurment.setDirty(true);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R008", $record);;
 update($measurment);
 end
 
@@ -379,20 +180,238 @@ $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_" + $merchant, $record);;
 update($measurment);
 end
 
-rule "(Rule Type ALERT) ALERT IF THE PERCENTAGE UTILIZATION OF AVAILABLE 'TO SPEND' IN 14 day(s) PERIOD EXCEEDS 60%"
+rule "(Rule Type ALERT) ALERTMore than 20 transactions of type 5000 (Sales Draft) at MCC 3641 (Sofitel Hotels) in Morocco (504) with Moroccan Dirham (504) using Puce within 1 hour"
 no-loop true
 
 salience 200
-agenda-group "Card->14 days"
+agenda-group "Merchant->1 hour"
 when
-$measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_TOTAL_PERCENTAGE"), (Double)$record.getValue("percentage")>=0.6)
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R000"), $merchant: transaction.merchant, $record.count>=20L)
 then
-Alert alert = new Alert("Alert: Consumption of available to spend exceeded 0.6 within 14 day(s)",Alert.POSITIVE);
+Alert alert = new Alert("Alert: More than 20L transactions detected at merchant " + $merchant + ",TranCode=5000, MCC=3641 (Sofitel), Country=Morocco (504), Currency=MAD (504), Support=Puce within 1 hour(s)",Alert.POSITIVE);
 alert.setWeight(100);;
-alert.setRuleTitle("ALERT IF THE PERCENTAGE UTILIZATION OF AVAILABLE 'TO SPEND' IN 14 day(s) PERIOD EXCEEDS 60%");;
+alert.setRuleTitle("ALERTMore than 20 transactions of type 5000 (Sales Draft) at MCC 3641 (Sofitel Hotels) in Morocco (504) with Moroccan Dirham (504) using Puce within 1 hour");;
 alert.setTotalAmount($record.getAmount());
 alert.setTotalCount($record.getCount());
 $measurment.getAlertSet().addAlert(alert);;
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE More than 5 transactions with Response Code 155 (PIN Error) of type 7001 (Cash Advance POS) at MCC 7011 (Hilton Garden Inn) in Morocco (504) with MAD currency via Payment Channel POS using Piste within 10 seconds."
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->10 seconds"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R010"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7001", transaction.autMercTypeF018=="7011", transaction.autAcqrInstCounCodeF019=="504", transaction.autTranCurrF049=="504", transaction.autCardEntrCapaF22_01=="2", transaction.autRespCodeF039=="155")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R010", $record);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT More than 40 transactions of type 21013 (Account Transfer) at  MCC 3177 (Airtan Airways) in Bangladesh (050) using Contactless within 1 month."
+no-loop true
+
+salience 200
+agenda-group "Merchant->1 month"
+when
+$measurment: Measurment($merchant: transaction.merchant, $record: records.get("COUNT_OF_TRANSACTION_ALL_R005"), $record.count>=40L)
+then
+Alert alert = new Alert("Alert: More than 40L transactions of type 21013 (Account Transfer) at MCC=3177 (Airtan Airways) in Bangladesh using Contactless at the same merchant " + $merchant + " within 1 month(s)",Alert.POSITIVE);
+alert.setWeight(100);;
+alert.setRuleTitle("ALERT More than 40 transactions of type 21013 (Account Transfer) at  MCC 3177 (Airtan Airways) in Bangladesh (050) using Contactless within 1 month.");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) R009 COMPUTE More than 10 transactions > 15,000 MAD at the same merchant within 1 week."
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Merchant->7 days"
+when
+$measurment: Measurment($merchant: transaction.merchant, $amount: transaction.amount, $record: records.get("COUNT_OF_TRANSACTION_ALL_R009"), transaction.merchant==$merchant, transaction.autTranCurrF049=="504", transaction.amount>15000L, transaction.autRespCodeF039=="000")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R009", $record);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERTMore than 20 transactions of type 5000 (Sales Draft) at MCC 3641 (Sofitel Hotels) in Morocco (504) with Moroccan Dirham (504) using Puce within 1 hour"
+no-loop true
+
+salience 200
+agenda-group "Merchant->1 hour"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R000"), $merchant: transaction.merchant, $record.count>=20L)
+then
+Alert alert = new Alert("Alert: More than 20L transactions detected at merchant " + $merchant + ",TranCode=5000, MCC=3641 (Sofitel), Country=Morocco (504), Currency=MAD (504), Support=Puce within 1 hour(s)",Alert.POSITIVE);
+alert.setWeight(100);;
+alert.setRuleTitle("ALERTMore than 20 transactions of type 5000 (Sales Draft) at MCC 3641 (Sofitel Hotels) in Morocco (504) with Moroccan Dirham (504) using Puce within 1 hour");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) R008 ALERTMore than 50 transactions of type 7007 (Salary Withdrawal POS)  at MCC 3260 (Spirit Air) in United Arab Emirates (466) with Afghani Lek (004) using Puce within 3 months."
+no-loop true
+
+salience 200
+agenda-group "Merchant->3 months"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R008"), $merchant: transaction.merchant, $record.count>=50L)
+then
+messageSender.send("Alert: More than 50L transactions detected at " + $merchant + ", TranCode=7007, MCC=3260 (Spirit Air), Country=UAE (466), Currency=Afghani Lek (004), Support=Puce within 3 month(s)",Alert.POSITIVE);
+update($measurment);
+end
+
+rule "(Rule Type ALERT) R007 COMPUTE More than 100 transactions of type 5000 (Sales Draft) at MCC  3519 (Pullman International Hotels) in Kazakhstan (398) with Jamaican Dollar (388) using Puce within 24 hours."
+no-loop true
+
+salience 200
+agenda-group "Merchant->1 day"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R007"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="5000", transaction.autMercTypeF018=="3519", transaction.autAcqrInstCounCodeF019=="398", transaction.autTranCurrF049=="388", transaction.autCardEntrCapaF22_01=="1", transaction.autRespCodeF039=="000")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R007", $record);;
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE More than 30 transactions of type 7006 (Cash Out) at MCC  7993 (Video Amusement Game) in Jordan (400) with Iraqi Dinar (368) using Piste within 1 week."
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Merchant->7 days"
+when
+$measurment: Measurment($merchant: transaction.merchant, $record: records.get("COUNT_OF_TRANSACTION_ALL_R004"), $record.count>=30L)
+then
+messageSender.send("Alert: More than 30L transactions of type 5000 (Sales Draft) at MCC=3641 in Morocco with MAD using Puce at the same merchant " + $merchant + " within 7 day(s)",Alert.POSITIVE);
+update($measurment);
+end
+
+rule "(Rule Type ALERT) Alert if the number of transactions exceeds 10L whithin 1 minute(s)"
+no-loop true
+
+salience 200
+agenda-group "Card->1 minute"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL"), $record.count>=10L)
+then
+Alert alert = new Alert("Alert: the number of transactions exceeded 10L within 1 minute(s)",Alert.POSITIVE);
+alert.setWeight(100);;
+alert.setRuleTitle("Alert if the number of transactions exceeds 10L whithin 1 minute(s)");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT IF MORE THAN 15 CASH DISBURSEMENT ATM TRANSACTIONS (7000) AT MCC 6011 USING PISTE WITH SAME MERCHANT WITHIN 15 MINUTES"
+no-loop true
+
+salience 200
+agenda-group "Merchant->15 minutes"
+when
+$measurment: Measurment($merchant: transaction.merchant, $record: records.get("COUNT_OF_TRANSACTION_ALL_R002"), $record.count>=15L)
+then
+messageSender.send("Alert: More than 15L transactions of type 7000 (Cash Disbursement ATM) at MCC 6011 (Financial Institution ATM) using Piste done with the same merchant within 15 minute(s)",Alert.POSITIVE);
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE TOTAL NUMBER OF 7000 CASH DISBURSEMENT ATM TRANSACTIONS AT MCC 6011 USING PISTE PER MERCHANT IN 15 minute(s)"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->15 minutes"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R002"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7000", transaction.autMercTypeF018=="6011", transaction.autCardEntrCapaF22_01=="2", transaction.autRespCodeF039=="000")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R002", $record);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT More than 25 transactions of type 41000 (Smart Cash Deposit)  at MCC 3543 (Four Seasons) using Puce within 1 day."
+no-loop true
+
+salience 200
+agenda-group "Merchant->1 day"
+when
+$measurment: Measurment($merchant: transaction.merchant, $record: records.get("COUNT_OF_TRANSACTION_ALL_R003"), $record.count>=25L)
+then
+messageSender.send("Alert: More than 25L transactions of type 5000 (Sales Draft) at MCC=3641 in Morocco with MAD using Puce at the same merchant " + $merchant + " within 1 day(s)",Alert.POSITIVE);
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT IF TOTAL NUMBER OF INVALID PIN ATTEMPTS EXCEEDS 5L IN 1 minute(s) PERIOD"
+no-loop true
+
+salience 200
+agenda-group "Card->1 minute"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_INVALIDPIN_ATTEMPTS"), $record.count>=5L)
+then
+Alert alert = new Alert("Number of invalid PIN attempts exceeded 5L in 1 minute(s)",Alert.POSITIVE);
+alert.setWeight(100);;
+alert.setRuleTitle("ALERT IF TOTAL NUMBER OF INVALID PIN ATTEMPTS EXCEEDS 5L IN 1 minute(s) PERIOD");;
+alert.setTotalAmount($record.getAmount());
+alert.setTotalCount($record.getCount());
+$measurment.getAlertSet().addAlert(alert);;
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE More than 25 transactions of type 41000 (Smart Cash Deposit)  at MCC 3543 (Four Seasons) using Puce within 1 day"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Merchant->1 day"
+when
+$measurment: Measurment($merchant: transaction.merchant, $record: records.get("COUNT_OF_TRANSACTION_ALL_R003"), transaction.merchant==$merchant, transaction.autTranCode=="5000", transaction.autMercTypeF018=="3641", transaction.autCardEntrCapaF22_01=="1", transaction.autRespCodeF039=="000", transaction.autAcqrInstCounCodeF019=="504", transaction.autTranCurrF049=="504")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R003", $record);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) alert: repeated transactions at the same merchant"
+no-loop true
+
+salience 200
+agenda-group "Merchant->10 seconds"
+when
+$measurment: Measurment($merchant: transaction.merchant, $record: records.get("COUNT_OF_TRANSACTION_ALL_R001"), $record.count>=3L)
+then
+messageSender.send("Alert: More than 3L transactions done with the same merchant with TranCode=7001, MCC=7011, Support=Contactless " + $merchant + " within 10 second(s)",Alert.POSITIVE);
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE More than 12 transactions with Response Code 161 (Max Transaction Amount Exceeded) of type 5000 (Sales Draft) at MCC 3641 (Sofitel Hotels) in Iraq (999) via Payment Channel online using Contactless within 1 hour."
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->1 hour"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R012"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="5000", transaction.autMercTypeF018=="3641", transaction.autAcqrInstCounCodeF019=="999", transaction.autCardEntrCapaF22_01=="3", transaction.autRespCodeF039=="161")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R012", $record);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) R007 ALERT More than 100 transactions of type 5000 (Sales Draft) at MCC  3519 (Pullman International Hotels) in Kazakhstan (398) with Jamaican Dollar (388) using Puce within 24 hours."
+no-loop true
+
+salience 200
+agenda-group "Merchant->1 day"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R007"), $merchant: transaction.merchant, $record.count>=100L)
+then
+messageSender.send("Alert: More than 100L transactions of type 5000 (Sales Draft) at MCC=3519 (Pullman International Hotels) in Kazakhstan with Jamaican Dollar using Puce at the same merchant " + $merchant + " within 1 day(s)",Alert.POSITIVE);
 update($measurment);
 end
 
