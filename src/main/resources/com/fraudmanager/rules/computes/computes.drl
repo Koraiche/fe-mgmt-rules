@@ -66,7 +66,7 @@ agenda-group "Card->1 hour"
 when
 $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R012"), $merchant: transaction.merchant, $record.count>=12L)
 then
-messageSender.send("Alert: More than 12L transactions with Response Code 161 (Max Transaction Amount Exceeded) at " + $merchant + ", TranCode=5000, MCC=3641 (Sofitel Hotels), Country=Iraq (999), Currency=Boliviano (068), Support=Contactless within 1 hour(s)",Alert.POSITIVE);
+messageSender.send("Alert: More than 12L transactions with Response Code 161 (Max Transaction Amount Exceeded) at " + $merchant + ", TranCode=5000, MCC=3641 (Sofitel Hotels), Country=Iraq (999), Support=Contactless within 1 hour(s)",Alert.POSITIVE);
 update($measurment);
 end
 
@@ -214,19 +214,6 @@ $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R013", $record);;
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) COMPUTE More than 40 transactions with Response Code 155 (PIN Error)  of type 7007 (Salary Withdrawal POS) at MCC 3260 (Spirit Air) in United Arab Emirates (466) using Puce within 3 months."
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->3 months"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R014"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7007", transaction.autMercTypeF018=="3260", transaction.autAcqrInstCounCodeF019=="466", transaction.autCardEntrCapaF22_01=="1", transaction.autRespCodeF039=="155")
-then
-$record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R014", $record);;
-update($measurment);
-end
-
 rule "(Rule Type COMPUTE) COMPUTE PIN Try Limit Exceeded ON Salary Withdrawal POS (Morocco)"
 no-loop true
 lock-on-active true
@@ -237,6 +224,19 @@ $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R015"), $
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R015", $record);;
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE More than 40 transactions with Response Code 155 (PIN Error)  of type 7007 (Salary Withdrawal POS) at MCC 3260 (Spirit Air) in United Arab Emirates (466) using Puce within 3 months."
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->3 months"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R014"), $merchant: transaction.merchant, transaction.merchant==$merchant, transaction.autTranCode=="7007", transaction.autMercTypeF018=="3260", transaction.autAcqrInstCounCodeF019=="466", transaction.autCardEntrCapaF22_01=="1", transaction.autRespCodeF039=="155")
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R014", $record);;
 update($measurment);
 end
 
@@ -302,19 +302,6 @@ $measurment.getAlertSet().addAlert(alert);;
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) COMPUTE NUMBER OF TRANSACTIONS WITH A RESPONSE CODES [\"33\", \"51\", \"54\", \"55\", \"61\", \"65\", \"82\"] WITHIN 10 minute(s)"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->10 minutes"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_WITH_SPECIFIC_RESPONSE_CODE"), $respCode: transaction.autRespCodeF039, Arrays.asList("33","51","54","55","61","65","82").contains($respCode), transaction.autMercTypeF018=="6011" || (transaction.autMercTypeF018!="6011" && (transaction.autCardHldrPrscF22_08=="9" || transaction.autCatLevelF22_12=="6")) || (transaction.autMercTypeF018!="6011" && (transaction.autCardHldrPrscF22_08!="9" && transaction.autCatLevelF22_12!="6")))
-then
-$record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_WITH_SPECIFIC_RESPONSE_CODE", $record);;
-update($measurment);
-end
-
 rule "(Rule Type ALERT) ALERT IF TOTAL NUMBER OF POS 02 TRANSACTIONS RECEIVED IN 10 second(s) TIME EXCEEDS 6L"
 no-loop true
 
@@ -342,6 +329,19 @@ $measurment: Measurment($record: records.get("AMOUNT_OF_TRANSACTION_ALL_SPECIFIC
 then
 $record.setAmount($record.getAmount() + $measurment.getTransaction().getAmount());
 $measurment.getRecords().put("AMOUNT_OF_TRANSACTION_ALL_SPECIFICMCC", $record);;
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE NUMBER OF TRANSACTIONS WITH A RESPONSE CODES [\"33\", \"51\", \"54\", \"55\", \"61\", \"65\", \"82\"] WITHIN 10 minute(s)"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->10 minutes"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_WITH_SPECIFIC_RESPONSE_CODE"), $respCode: transaction.autRespCodeF039, Arrays.asList("33","51","54","55","61","65","82").contains($respCode), transaction.autMercTypeF018=="6011" || (transaction.autMercTypeF018!="6011" && (transaction.autCardHldrPrscF22_08=="9" || transaction.autCatLevelF22_12=="6")) || (transaction.autMercTypeF018!="6011" && (transaction.autCardHldrPrscF22_08!="9" && transaction.autCatLevelF22_12!="6")))
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_WITH_SPECIFIC_RESPONSE_CODE", $record);;
 update($measurment);
 end
 
