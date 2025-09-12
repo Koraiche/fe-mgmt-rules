@@ -604,7 +604,7 @@ messageSender.send("Alert: More than 40L transactions with Response Code 155 (PI
 update($measurment);
 end
 
-rule "(Rule Type ALERT) ALERT More than 5 transactions by card detected in 4 different countries (Jordan, UAE, Iraq, Bangladesh) within 1 day"
+rule "(Rule Type ALERT) ALERT More than 5 transactions by card detected in 4 different countries  within 1 day"
 no-loop true
 
 salience 200
