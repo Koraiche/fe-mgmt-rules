@@ -138,19 +138,6 @@ $measurment.getAlertSet().addAlert(alert);;
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) COMPUTE More than 20 transactions by card  detected in 4 different countries (Jordan, Kazakhstan, UAE, Morocco) within 1 week"
-no-loop true
-lock-on-active true
-salience 1000
-agenda-group "Card->7 days"
-when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R022"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="400", $country=="398", $country=="466" && $country=="504"))
-then
-$record.setCount($record.getCount() + 1);
-$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R022", $record);;
-update($measurment);
-end
-
 rule "(Rule Type COMPUTE) COMPUTE TOTAL NUMBER OF POS 02 TRANSACTIONS RECEIVED IN A 10 second(s) TIME"
 no-loop true
 lock-on-active true
@@ -283,7 +270,7 @@ lock-on-active true
 salience 1000
 agenda-group "Card->15 minutes"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R021"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="388", $country=="466" && $country=="999"))
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R021"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="388" || $country=="466" || $country=="999"))
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R021", $record);;
@@ -308,7 +295,7 @@ lock-on-active true
 salience 1000
 agenda-group "Card->7 days"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R022"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="400", $country=="398", $country=="466" && $country=="504"))
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R022"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="400" || $country=="398" || $country=="466" || $country=="504"))
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R022", $record);;
@@ -490,7 +477,7 @@ lock-on-active true
 salience 1000
 agenda-group "Card->5 hours"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R020"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="400", $country=="398", $country=="466", $country=="504" && $country=="068"))
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R020"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="400" || $country=="398" || $country=="466" || $country=="504" || $country=="068"))
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R020", $record);;
