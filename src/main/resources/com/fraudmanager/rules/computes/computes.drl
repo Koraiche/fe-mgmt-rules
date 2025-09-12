@@ -76,7 +76,7 @@ lock-on-active true
 salience 1000
 agenda-group "Card->1 day"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R019"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="400", $country=="466", $country=="999" && $country=="050"))
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R019"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="400" || $country=="466" || $country=="999" || $country=="050"))
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R019", $record);;
@@ -114,7 +114,7 @@ lock-on-active true
 salience 1000
 agenda-group "Card->1 hour"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R018"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, transaction.autTranCode=="7000", ($country=="400", $country==" 398" && $country=="504"))
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R018"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, transaction.autTranCode=="7000", ($country=="400" || $country=="398" || $country=="504"))
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R018", $record);;
@@ -334,7 +334,7 @@ lock-on-active true
 salience 1000
 agenda-group "Card->5 hours"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R017"), $country: transaction.autAcqrInstCounCodeF019, transaction.autTranCode=="7000", ($country=="466", $country=="398" && $country=="999"))
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R017"), $country: transaction.autAcqrInstCounCodeF019, transaction.autTranCode=="7000", ($country=="466" || $country=="398" || $country=="999"))
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R017", $record);;
