@@ -624,7 +624,7 @@ agenda-group "Card->1 minute"
 when
 $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_INVALIDPIN_ATTEMPTS"), $record.count>=5L)
 then
-Alert alert = new Alert("Number of invalid PIN attempts exceeded 5L in 1 minute(s)",Alert.POSITIVE);
+Alert alert = new Alert("ALERT: Number of invalid PIN attempts exceeded 5L in 1 minute(s)",Alert.POSITIVE);
 alert.setWeight(100);;
 alert.setRuleTitle("ALERT IF TOTAL NUMBER OF INVALID PIN ATTEMPTS EXCEEDS 5L IN 1 minute(s) PERIOD");;
 alert.setTotalAmount($record.getAmount());
