@@ -70,7 +70,7 @@ messageSender.send("Alert: More than 12L transactions with Response Code 161 (Ma
 update($measurment);
 end
 
-rule "(Rule Type COMPUTE) COMPUTE More than 5 transactions by card detected in 4 different countries (Jordan, UAE, Iraq, Bangladesh) within 1 day"
+rule "(Rule Type COMPUTE) COMPUTE More than 5 transactions by card detected in 4 different countries within 1 day"
 no-loop true
 lock-on-active true
 salience 1000
