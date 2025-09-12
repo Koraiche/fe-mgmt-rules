@@ -70,6 +70,19 @@ messageSender.send("Alert: More than 12L transactions with Response Code 161 (Ma
 update($measurment);
 end
 
+rule "(Rule Type COMPUTE) COMPUTE More than 5 transactions by card detected in 4 different countries (Jordan, UAE, Iraq, Bangladesh) within 1 day"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->1 day"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R019"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="400", $country=="466", $country=="999" && $country=="050"))
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R019", $record);;
+update($measurment);
+end
+
 rule "(Rule Type COMPUTE) COMPUTE More than 40 transactions of type 21013 (Account Transfer) at  MCC 3177 (Airtan Airways) in Bangladesh (050) using Contactless within 1 month."
 no-loop true
 lock-on-active true
@@ -92,6 +105,19 @@ when
 $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R011"), $merchant: transaction.merchant, $record.count>=8L)
 then
 messageSender.send("Alert: More than 8L transactions with Response Code 275 (PIN Try Limit Exceeded) at " + $merchant + ", TranCode=7000, MCC=6011 (ATM), Country=Jordan (400), Support=Puce within 15 minute(s)",Alert.POSITIVE);
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE More than 3 Cash Disbursement ATM transactions  by card detected in 3 different countries (Jordan, Kazakhstan, Morocco)  within 1hour"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->1 hour"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R018"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, transaction.autTranCode=="7000", ($country=="400", $country==" 398" && $country=="504"))
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R018", $record);;
 update($measurment);
 end
 
@@ -122,6 +148,18 @@ $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_POS02"), 
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_POS02", $record);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT More than 10 transactions by card  detected in 5 different countries (Jordan, Kazakhstan, UAE, Morocco, Bolivia)  within 5hours"
+no-loop true
+
+salience 200
+agenda-group "Card->5 hours"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R020"), $card: transaction.autPrimAcctNumbF002, $record.count>=10L)
+then
+messageSender.send("Alert: More than 10L transactions by card " + $card + " detected in 5 different countries (Jordan, Kazakhstan, UAE, Morocco, Bolivia) within 5 hour(s)",Alert.POSITIVE);
 update($measurment);
 end
 
@@ -214,6 +252,44 @@ $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R013", $record);;
 update($measurment);
 end
 
+rule "(Rule Type COMPUTE) COMPUTE More than 3 transactions by card detected in 3 different countries (Jamaica, UAE, Iraq) within 15min"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->15 minutes"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R021"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="388", $country=="466" && $country=="999"))
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R021", $record);;
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT More than 3 Cash Disbursement ATM transactions  by card detected in 3 different countries (Jordan, Kazakhstan, Morocco)  within 1hour"
+no-loop true
+
+salience 200
+agenda-group "Card->1 hour"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R018"), $card: transaction.autPrimAcctNumbF002, $record.count>=3L)
+then
+messageSender.send("Alert: More than 3L Cash Disbursement ATM transactions by card " + $card + " detected in 3 different countries (Jordan, Kazakhstan, Morocco) within 1 hour(s)",Alert.POSITIVE);
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE More than 20 transactions by card  detected in 4 different countries (Jordan, Kazakhstan, UAE, Morocco) within 1 week"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->7 days"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R022"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="400", $country=="398", $country=="466" && $country=="504"))
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R022", $record);;
+update($measurment);
+end
+
 rule "(Rule Type COMPUTE) COMPUTE PIN Try Limit Exceeded ON Salary Withdrawal POS (Morocco)"
 no-loop true
 lock-on-active true
@@ -246,7 +322,7 @@ lock-on-active true
 salience 1000
 agenda-group "Card->5 hours"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R017"), $merchant: transaction.merchant, $country: transaction.autAcqrInstCounCodeF019, transaction.merchant==$merchant, transaction.autTranCode=="7000", ($country=="466", $country=="400" && $country=="999"))
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R017"), $country: transaction.autAcqrInstCounCodeF019, transaction.autTranCode=="7000", ($country=="466", $country=="398" && $country=="999"))
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R017", $record);;
@@ -321,9 +397,9 @@ no-loop true
 salience 200
 agenda-group "Card->5 hours"
 when
-$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R017"), $merchant: transaction.merchant, $record.count>=3L)
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R017"), $merchant: transaction.merchant, $record.count>=10L)
 then
-messageSender.send("Alert: More than 3L Cash Disbursement ATM transactions at " + $merchant + ", TranCode=7000, detected in multiple countries (UAE=466, Jordan=400, Iraq=999) within 5 hour(s)",Alert.POSITIVE);
+messageSender.send("Alert: More than 10L Cash Disbursement ATM transactions at " + $merchant + ", TranCode=7000, detected in multiple countries (UAE=466, Jordan=400, Iraq=999) within 5 hour(s)",Alert.POSITIVE);
 update($measurment);
 end
 
@@ -380,6 +456,19 @@ $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R011"), $
 then
 $record.setCount($record.getCount() + 1);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R011", $record);;
+update($measurment);
+end
+
+rule "(Rule Type COMPUTE) COMPUTE More than 10 transactions by card  detected in 5 different countries (Jordan, Kazakhstan, UAE, Morocco, Bolivia)  within 5hours"
+no-loop true
+lock-on-active true
+salience 1000
+agenda-group "Card->5 hours"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R020"), $card: transaction.autPrimAcctNumbF002, $country: transaction.autAcqrInstCounCodeF019, ($country=="400", $country=="398", $country=="466", $country=="504" && $country=="068"))
+then
+$record.setCount($record.getCount() + 1);
+$measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL_R020", $record);;
 update($measurment);
 end
 
@@ -440,6 +529,18 @@ $measurment.getAlertSet().addAlert(alert);;
 update($measurment);
 end
 
+rule "(Rule Type ALERT) ALERTMore than 3 transactions by card detected in 3 different countries (Jamaica, UAE, Iraq) within 15min"
+no-loop true
+
+salience 200
+agenda-group "Card->15 minutes"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R021"), $card: transaction.autPrimAcctNumbF002, $record.count>=3L)
+then
+messageSender.send("Alert: More than 3L transactions by card " + $card + " detected in 3 different countries (Jamaica, UAE, Iraq) within 15 minute(s)",Alert.POSITIVE);
+update($measurment);
+end
+
 rule "(Rule Type COMPUTE) COMPUTE TOTAL AUTHORIZATION VALUE IN 1 hour(s) IN SPECIFIC COUNTRIES"
 no-loop true
 lock-on-active true
@@ -475,6 +576,18 @@ when
 $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R014"), $merchant: transaction.merchant, $record.count>=40L)
 then
 messageSender.send("Alert: More than 40L transactions with Response Code 155 (PIN Error) at " + $merchant + ", TranCode=7007, MCC=3260 (Spirit Air), Country=UAE (466), Support=Puce within 3 month(s)",Alert.POSITIVE);
+update($measurment);
+end
+
+rule "(Rule Type ALERT) ALERT More than 5 transactions by card detected in 4 different countries (Jordan, UAE, Iraq, Bangladesh) within 1 day"
+no-loop true
+
+salience 200
+agenda-group "Card->1 day"
+when
+$measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL_R019"), $card: transaction.autPrimAcctNumbF002, $record.count>=5L)
+then
+messageSender.send("Alert: More than 5L transactions by card " + $card + " detected in 4 different countries (Jordan, UAE, Iraq, Bangladesh) within 1 day(s)",Alert.POSITIVE);
 update($measurment);
 end
 
