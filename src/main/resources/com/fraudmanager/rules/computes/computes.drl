@@ -30,7 +30,7 @@ agenda-group "Card->1 minute"
 when
 $measurment: Measurment($record: records.get("COUNT_OF_TRANSACTION_ALL"))
 then
-$record.getCount() = $record.getCount()+1L;
+$record.setCount($record.getCount()+1L);
 $measurment.getRecords().put("COUNT_OF_TRANSACTION_ALL", $record);
 ;
 update($measurment);
